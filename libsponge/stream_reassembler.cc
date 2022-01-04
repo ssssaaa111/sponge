@@ -1,4 +1,5 @@
 #include "stream_reassembler.hh"
+#include <iostream>
 
 // Dummy implementation of a stream reassembler.
 
@@ -14,13 +15,107 @@ using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {}
 
+long StreamReassembler::merge_block(block_node &elm1, const block_node &elm2) {
+    block_node x, y;
+    if (elm1.begin > elm2.begin) {
+        x = elm2;
+        y = elm1;
+    } else {
+        x = elm1;
+        y = elm2;
+    }
+    if (x.begin + x.length < y.begin) {
+        // throw runtime_error("StreamReassembler: couldn't merge blocks\n");
+        return -1;  // no intersection, couldn't merge
+    } else if (x.begin + x.length >= y.begin + y.length) {
+        elm1 = x;
+        return y.length;
+    } else {
+        elm1.begin = x.begin;
+        elm1.data = x.data + y.data.substr(x.begin + x.length - y.begin);
+        elm1.length = elm1.data.length();
+        return x.begin + x.length - y.begin;
+    }
+}
+
+
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
     DUMMY_CODE(data, index, eof);
+    // cout<<"input:"<< data <<endl;
+    // if (_unassembled_bytes.find(index) != _unassembled_bytes.end()) {
+    //     _unassembled_bytes.insert(pair<int , string>(index, data));
+    // }
+    // _output.end_input
+    if (index > _head_index+_capacity) {
+        return;
+    }
+    long merged_bytes = 0;
+    block_node elm;
+    std::set<StreamReassembler::block_node>::iterator iter;
+    vector<std::set<StreamReassembler::block_node>::iterator> to_be_delete;
+    // size_t to_be_delete_size = 0;
+    // 重复字符串，可以直接忽略
+    if (index + data.length() <= _head_index) {
+        return;
+    } else if (index < _head_index) {  // 和起始点的重叠了，可以写入stream中，可以向后继续合并
+        size_t offset = _head_index - index; // substring的新起点
+        elm.data.assign(data.begin()+offset, data.end());
+        elm.begin = _head_index;
+        elm.length = elm.data.length();
+       
+        // merge next
+        iter = _blocks.begin();
+        while ((merged_bytes = merge_block(elm, *iter)) >= 0) {
+            _unassembled_byte -= merged_bytes;
+            to_be_delete.push_back(iter);
+            iter ++;
+        }
+        // 清理掉set中被合并的节点
+        for (size_t i = 0; i < to_be_delete.size(); i++)
+        {   
+            // to_be_delete_size += iter->length;
+            _blocks.erase(to_be_delete[i]);
+        }
+        // 把新合并的节点刷进stream
+        _output.write(elm.data);
+        
+        // _unassembled_byte -= to_be_delete_size;
+
+    } else {   // 在起始字符串的后面一截，两者没有交集，没法合入到stream中，可以和前后的合并
+        elm.begin = index;
+        elm.length = data.length();
+        elm.data = data;
+        iter = _blocks.lower_bound(elm);
+        // merge before 
+        if (iter != _blocks.begin()) {
+            iter--;
+            if ((merged_bytes = merge_block(elm, *iter)) >= 0) {
+                _unassembled_byte -= merged_bytes;
+                to_be_delete.push_back(iter);
+            }
+            iter++;
+        }
+        // merge back 
+        while ((merged_bytes = merge_block(elm, *iter)) >= 0) {
+            _unassembled_byte -= merged_bytes;
+            to_be_delete.push_back(iter);
+            iter ++;
+        }
+
+        // 清理掉set中被合并的节点
+        for (size_t i = 0; i < to_be_delete.size(); i++)
+        {   
+            // to_be_delete_size += iter->length;
+            _blocks.erase(to_be_delete[i]);
+        }
+        
+        _blocks.insert(elm);
+    }
 }
 
-size_t StreamReassembler::unassembled_bytes() const { return {}; }
+size_t StreamReassembler::unassembled_bytes() const { return _unassembled_byte; }
 
-bool StreamReassembler::empty() const { return {}; }
+bool StreamReassembler::empty() const { return _unassembled_byte==0; }
