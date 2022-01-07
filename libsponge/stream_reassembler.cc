@@ -68,12 +68,12 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         elm.begin = _head_index;
         elm.length = elm.data.length();
         // 如果此时_block 为空，则直接写入strem就行了
+        _unassembled_byte += elm.length;
         if (!_blocks.size() == 0) {
-            _unassembled_byte += elm.length;
             // merge next
             iter = _blocks.begin();
-            while ((merged_bytes = merge_block(elm, *iter)) >= 0) {
-                cout << "2222" << endl;
+            while (iter != _blocks.end() && (merged_bytes = merge_block(elm, *iter)) >= 0) {
+                // cout << "2222" << endl;
                 _unassembled_byte -= merged_bytes;
                 to_be_delete.push_back(iter);
                 iter++;
@@ -87,8 +87,9 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         }
 
         // 把新合并的节点刷进stream
-        _output.write(elm.data);
-        _head_index += elm.length;
+        size_t write_bytes = _output.write(elm.data);
+        _head_index += write_bytes;
+        _unassembled_byte -= write_bytes;
         // 收到eof表示已经收到结束字符，只需让剩下的unassemb
         if (eof) {
             _eof_flag = true;
@@ -108,11 +109,11 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             return;
         }
         
-        cout << "3333" << endl;
+        // cout << "3333" << endl;
         elm.begin = index;
         elm.length = data.length();
         elm.data = data;
-        _unassembled_byte += merged_bytes;
+        _unassembled_byte += elm.length;
         if (!_blocks.size() == 0) {
             iter = _blocks.lower_bound(elm);
             // merge before
@@ -125,10 +126,10 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
                 iter++;
             }
 
-            cout << "44444" << endl;
+            // cout << "44444" << endl;
             // merge back
-            while ((merged_bytes = merge_block(elm, *iter)) >= 0) {
-                cout << "111" << endl;
+            while (iter != _blocks.end() && (merged_bytes = merge_block(elm, *iter)) >= 0) {
+                // cout << "111" << endl;
                 _unassembled_byte -= merged_bytes;
                 to_be_delete.push_back(iter);
                 iter++;
