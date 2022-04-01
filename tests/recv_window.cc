@@ -36,7 +36,7 @@ int main() {
             test.execute(ExpectAckno{WrappingInt32{isn + 13}});
             test.execute(ExpectWindow{cap - 12});
         }
-
+    
         {
             // Window size expands upon read
             size_t cap = 4000;

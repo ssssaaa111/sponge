@@ -61,6 +61,8 @@ class StreamReassembler {
 
     // help func
     long merge_block(block_node &elm1, const block_node &elm2);
+
+    size_t head_index() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

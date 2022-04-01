@@ -14,7 +14,6 @@ using namespace std;
 int main() {
     try {
         // auto rd = get_random_generator();
-
         {
             TCPReceiverTestHarness test{4000};
             test.execute(ExpectWindow{4000});
@@ -26,7 +25,7 @@ int main() {
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
         }
-
+    
         {
             TCPReceiverTestHarness test{5435};
             test.execute(ExpectAckno{std::optional<WrappingInt32>{}});
@@ -37,7 +36,6 @@ int main() {
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
         }
-
         {
             TCPReceiverTestHarness test{5435};
             test.execute(ExpectAckno{std::optional<WrappingInt32>{}});
@@ -76,7 +74,7 @@ int main() {
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
         }
-
+        
         {
             TCPReceiverTestHarness test{4000};
             test.execute(SegmentArrives{}.with_syn().with_seqno(5).with_fin().with_result(SegmentArrives::Result::OK));
@@ -85,13 +83,15 @@ int main() {
             test.execute(ExpectUnassembledBytes{0});
             test.execute(ExpectTotalAssembledBytes{0});
         }
-
+        
         {
             // Window overflow
             size_t cap = static_cast<size_t>(UINT16_MAX) + 5;
             TCPReceiverTestHarness test{cap};
             test.execute(ExpectWindow{cap});
         }
+        
+        
     } catch (const exception &e) {
         cerr << e.what() << endl;
         return 1;
