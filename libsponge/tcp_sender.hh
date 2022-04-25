@@ -31,6 +31,11 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+    uint64_t _bytes_in_flight{0};
+
+    WrappingInt32 _ackno = _isn;
+    
+    uint16_t _window_size = 1;
 
   public:
     //! Initialize a TCPSender

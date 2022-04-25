@@ -12,6 +12,7 @@
 using namespace std;
 
 int main() {
+    
     try {
         auto rd = get_random_generator();
 
