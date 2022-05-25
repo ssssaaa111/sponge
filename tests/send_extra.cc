@@ -14,7 +14,7 @@ using namespace std;
 int main() {
     try {
         auto rd = get_random_generator();
-
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -149,6 +149,7 @@ int main() {
             test.execute(ExpectSegment{}.with_payload_size(3).with_data("def").with_seqno(isn + 4));
             test.execute(ExpectNoSegment{});
         }
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -197,7 +198,7 @@ int main() {
             test.execute(Tick{2});
             test.execute(ExpectSegment{}.with_payload_size(3).with_data("abc").with_seqno(isn + 1).with_fin(true));
         }
-
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -225,7 +226,8 @@ int main() {
             test.execute(Tick{10});
             test.execute(ExpectSegment{}.with_payload_size(0).with_seqno(isn + 4).with_fin(true));
         }
-
+        
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -270,7 +272,7 @@ int main() {
             test.execute(AckReceived{WrappingInt32{isn + 4}}.with_win(1));
             test.execute(ExpectSegment{}.with_payload_size(0).with_seqno(isn + 4).with_fin(true));
         }
-
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -297,7 +299,7 @@ int main() {
             test.execute(AckReceived(isn + 2 + TCPConfig::MAX_PAYLOAD_SIZE));
             test.execute(ExpectState{TCPSenderStateSummary::FIN_ACKED});
         }
-
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());

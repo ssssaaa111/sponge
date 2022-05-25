@@ -1,4 +1,5 @@
 #include "byte_stream.hh"
+#include<iostream>
 
 // Dummy implementation of a flow-controlled in-memory byte stream.
 
@@ -25,6 +26,7 @@ size_t ByteStream::write(const string &data) {
     string s;
     s.assign(data.begin(), data.begin()+len);
     _buffer.append(Buffer(move(s)));
+    // std::cout<<"write len:"<<len<<std::endl;
     return len;
 }
 
@@ -60,6 +62,7 @@ std::string ByteStream::read(const size_t len) {
     string s =  _buffer.concatenate();
     string s1 =  string().assign(s.begin(), s.begin()+length);
     _buffer.remove_prefix(length);
+    // std::cout<<"read string:"<<s1<<std::endl;
     return s1;
 }
 

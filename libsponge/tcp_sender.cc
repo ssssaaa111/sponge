@@ -3,6 +3,7 @@
 #include "tcp_config.hh"
 #include<iostream>
 #include <random>
+#include<algorithm>
 
 // Dummy implementation of a TCP sender
 
@@ -20,6 +21,8 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
+    , _retransmission_timeout{retx_timeout}
+    , _retransmission_timeout_left{retx_timeout}
     , _stream(capacity) {}
 
 uint64_t TCPSender::bytes_in_flight() const {
@@ -28,33 +31,81 @@ uint64_t TCPSender::bytes_in_flight() const {
 
 void TCPSender::fill_window() {
     TCPSegment seg;
+    size_t win = _window_size > 0 ? _window_size : 1;
+    // if (_window_size == 0)
+    // {
+    //     _window_size = 1;
+    // }
+    
     // 还未开始发送，先设置syn位
     if (_next_seqno == 0)
     {
         seg.header().syn = true;
+        seg.header().seqno = _isn;
+        _segments_out.push(seg);
+        _bytes_in_flight += seg.length_in_sequence_space();
+        _next_seqno += 1;
+        _segments_on_going.push(seg);
+        // _window_size -= 1;
+        _timer = true;
+        return;
     }
-    seg.header().seqno = _isn + _next_seqno;
-    size_t len = seg.length_in_sequence_space();
-    string payload = _stream.read(_window_size-len);
-    // if (payload.size() == 0)
-    // {
-    //     return;
     
-    // }
-    
-    seg.payload() = std::string(payload);
-    std::cout<<"bytes_written:"<<_stream.bytes_written()<<std::endl;
-    std::cout<<"bytes_read:"<<_stream.bytes_read()<<std::endl;
-    std::cout<<"is stream eof:"<<_stream.eof()<<std::endl;
-     if (seg.length_in_sequence_space() == 0)
+    // uint16_t remainder_size = _window_size;
+    size_t max_size = TCPConfig::MAX_PAYLOAD_SIZE;
+    if (win + _ack_unwrap <= _next_seqno)
     {
         return;
     }
     
-    _segments_out.push(seg);
-    _next_seqno += _window_size;
-   
-    _bytes_in_flight += seg.length_in_sequence_space();
+    
+    
+    while (true)
+    {
+        size_t remain_size_can_be_fill = win + _ack_unwrap - _next_seqno;
+        if (_fin || remain_size_can_be_fill == 0)
+        {
+            break;
+        }
+
+        seg.header().seqno = wrap(_next_seqno, _isn); 
+        string payload = _stream.read(min(remain_size_can_be_fill, max_size));
+        std::cout<<"pushing->"<<payload.size()<<" chars...."<<std::endl;
+        remain_size_can_be_fill -= payload.size();
+        //  _window_size -=  payload.size();
+        _fin = _stream.eof();
+        if (_fin)
+        {
+            if (remain_size_can_be_fill > 0)
+            {
+                 seg.header().fin = _fin;
+                // _window_size -= 1;
+                // remain_size_can_be_fill -= 1;
+            } else {
+               _fin = false; 
+            }
+        }
+
+        seg.payload() = std::move(payload);
+        
+        if (seg.length_in_sequence_space() == 0)
+        {
+            // std::cout<<"nothing to send....."<<std::endl;
+            break;
+        }
+        // if (_fin && seg.length_in_sequence_space() == 1 && _bytes_in_flight > 0)
+        // {
+        //     _window_size += 1;
+        //     _fin = false;
+        //     break;
+        // }
+        
+        _next_seqno += seg.length_in_sequence_space();
+        _bytes_in_flight += seg.length_in_sequence_space();
+        _segments_out.push(seg);
+        _segments_on_going.push(seg);
+        _timer = true;
+    }
 }
 
 // TCPSegment TCPSender::build_segment(string data, ) {
@@ -74,20 +125,79 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     
-    WrappingInt32 last_ackno = _ackno;
-    _ackno = ackno;
+    // WrappingInt32 last_ackno = _ackno;
+    uint64_t ack_unwrap = unwrap(ackno, _isn, _last_received_ack);
+    if (_next_seqno < ack_unwrap) {
+        return;
+    }
     _window_size = window_size;
-    int32_t diff = (_ackno - last_ackno);
-    std::cout<<"last_ack:"<<last_ackno.raw_value()<<std::endl;
-    std::cout<<"new_ack:"<<_ackno.raw_value()<<std::endl;
-    std::cout<<"diff:"<<diff<<std::endl;
-    _bytes_in_flight -= diff;
+    if (ack_unwrap > _last_received_ack)
+    {
+        _ackno = ackno;
+        _ack_unwrap = ack_unwrap;
+        while (_segments_on_going.size() > 0)
+        {
+            // std::cout<<"front len:"<<_segments_on_going.front().length_in_sequence_space()<<std::endl;
+            uint64_t current_end_sqn = unwrap(_segments_on_going.front().header().seqno, _isn, _last_received_ack) + 
+                                        _segments_on_going.front().length_in_sequence_space();
+            if (ack_unwrap >= current_end_sqn)
+            {   
+                _bytes_in_flight -= _segments_on_going.front().length_in_sequence_space();
+                // _segments_out.push(_segments_on_going.front());
+                _segments_on_going.pop();
+                // _window_size = window_size;
+                // if (_fin)
+                // {
+                //     _fin = false;
+                // }
+                
+            } else {
+                break;
+            }
+        }
 
+        // 处理tick的各种值
+        _retransmission_timeout = _initial_retransmission_timeout;
+        _retransmission_timeout_left = _initial_retransmission_timeout;
+        if (_segments_on_going.size() > 0)
+        {
+            _timer = true;
+        } else {
+            _timer = false;
+        }
+        _consecutive_retransmissions = 0;
+        _last_received_ack = ack_unwrap;
+    }
+    // fill_window();
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void TCPSender::tick(const size_t ms_since_last_tick) {
+    if (_timer)
+    {
+        if (_retransmission_timeout_left <= ms_since_last_tick)
+        {
+            _segments_out.push(_segments_on_going.front());
+            _consecutive_retransmissions += 1;
+            if (_window_size != 0)
+            {
+                _retransmission_timeout *=2;
+            }
+            
+            
+            _retransmission_timeout_left = _retransmission_timeout;
+        }
+        else {
+            _retransmission_timeout_left -= ms_since_last_tick;
+        }
+    }
+    
+     
+     
+}
 
-unsigned int TCPSender::consecutive_retransmissions() const { return {}; }
+unsigned int TCPSender::consecutive_retransmissions() const { return _consecutive_retransmissions; }
 
-void TCPSender::send_empty_segment() {}
+void TCPSender::send_empty_segment() {
+    
+}

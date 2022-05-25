@@ -14,7 +14,7 @@ using namespace std;
 int main() {
     try {
         auto rd = get_random_generator();
-
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
@@ -96,7 +96,8 @@ int main() {
             test.execute(ExpectSegment{}.with_fin(true).with_data(""));
             test.execute(ExpectNoSegment{});
         }
-
+        
+        
         {
             TCPConfig cfg;
             WrappingInt32 isn(rd());
