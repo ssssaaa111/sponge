@@ -50,7 +50,7 @@ bool TCPConnection::active() const {
 }
 
 void TCPConnection::push_seg_out() {
-    if(in_syn_sent()) {
+    if(in_syn_recv()) {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
@@ -99,6 +99,11 @@ bool TCPConnection::in_syn_sent() {
    return  _sender.next_seqno_absolute() > 0 && 
    _sender.next_seqno_absolute() == _sender.bytes_in_flight();
 }
+
+bool TCPConnection::in_syn_recv() { 
+    return _receiver.ackno().has_value() && !_receiver.stream_out().input_ended(); 
+    }
+
 
 TCPConnection::~TCPConnection() {
     try {

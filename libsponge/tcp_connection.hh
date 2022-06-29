@@ -72,6 +72,8 @@ class TCPConnection {
     // syn sent stat check
     bool in_syn_sent();
 
+    bool in_syn_recv();
+
     //! Called periodically when time elapses
     void tick(const size_t ms_since_last_tick);
 
