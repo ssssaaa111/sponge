@@ -20,6 +20,7 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
+    bool _active = false;
 
   public:
     //! \name "Input" interface for the writer
@@ -64,6 +65,12 @@ class TCPConnection {
 
     //! Called when a new segment has been received from the network
     void segment_received(const TCPSegment &seg);
+
+    // as it said, push seg out 
+    void push_seg_out();
+    
+    // syn sent stat check
+    bool in_syn_sent();
 
     //! Called periodically when time elapses
     void tick(const size_t ms_since_last_tick);
