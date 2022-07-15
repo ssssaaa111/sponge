@@ -50,7 +50,24 @@ bool TCPConnection::active() const {
 }
 
 void TCPConnection::push_seg_out() {
-    if(in_syn_recv()) {
+    std::cout<<"sender status is: "<<TCPState::state_summary(_sender) << std::endl;
+    if (TCPSenderStateSummary::FIN_SENT == TCPState::state_summary(_sender))
+    {
+        TCPSegment seg;
+        seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        _segments_out.push(seg);
+        return;
+    }
+    else if (TCPSenderStateSummary::FIN_ACKED == TCPState::state_summary(_sender)) {
+        TCPSegment seg;
+        seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        _segments_out.push(seg);
+        return;
+    }
+    
+    else if(in_syn_recv()) {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
@@ -84,10 +101,35 @@ size_t TCPConnection::write(const string &data) {
 void TCPConnection::tick(const size_t ms_since_last_tick) { 
     // DUMMY_CODE(ms_since_last_tick); 
     _sender.tick(ms_since_last_tick);
+    std::cout<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
+    std::cout<<_sender.time_has_waited() << "--" << _sender.init_transmissions() << std::endl;
+    if (_sender.time_has_waited() == 10* _sender.init_transmissions())
+    {
+        
+        if (state() == TCPState::State::TIME_WAIT)
+        {
+            _active = false;
+            _linger_after_streams_finish = false;
+        }
+        
+    }
+    
     }
 
 void TCPConnection::end_input_stream() {
     _sender.stream_in().end_input();
+
+    TCPSegment seg;
+    seg.header().ack = true;
+    seg.header().ackno = _receiver.ackno().value();
+    seg.header().fin = true;
+    seg.header().seqno = _sender.next_seqno();
+    // _sender.next_seqno
+    _sender.send_empty_segment();
+    _segments_out.push(seg);
+    return;
+
+
 }
 
 void TCPConnection::connect() {
@@ -101,10 +143,12 @@ bool TCPConnection::in_syn_sent() {
 }
 
 bool TCPConnection::in_syn_recv() { 
+    std::cout<<"status:"<<"in_syn_recv"<<std::endl;
     return _receiver.ackno().has_value() && !_receiver.stream_out().input_ended(); 
     }
 
 
+    
 TCPConnection::~TCPConnection() {
     try {
         if (active()) {

@@ -29,6 +29,7 @@ class TCPSender {
     unsigned int _initial_retransmission_timeout;
     unsigned int _retransmission_timeout;
     unsigned int _retransmission_timeout_left;
+    unsigned int _time_has_waited = 0;
     unsigned int _consecutive_retransmissions = 0;
 
     //! outgoing stream of bytes that have not yet been sent
@@ -90,6 +91,8 @@ class TCPSender {
     //! \brief Number of consecutive retransmissions that have occurred in a row
     unsigned int consecutive_retransmissions() const;
 
+    unsigned int init_transmissions() const;
+
     //! \brief TCPSegments that the TCPSender has enqueued for transmission.
     //! \note These must be dequeued and sent by the TCPConnection,
     //! which will need to fill in the fields that are set by the TCPReceiver
@@ -102,6 +105,9 @@ class TCPSender {
 
     //! \brief absolute seqno for the next byte to be sent
     uint64_t next_seqno_absolute() const { return _next_seqno; }
+
+    //! \brief time waited total
+    uint64_t time_has_waited() const { return _time_has_waited; }
 
     //! \brief relative seqno for the next byte to be sent
     WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
