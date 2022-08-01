@@ -16,7 +16,7 @@ using State = TCPTestHarness::State;
 int main() {
     try {
         TCPConfig cfg{};
-
+        
         // test #1: start in TIME_WAIT, timeout
         {
             TCPTestHarness test_1 = TCPTestHarness::in_time_wait(cfg);
@@ -34,7 +34,7 @@ int main() {
             test_1.execute(ExpectState{State::CLOSED});
         }
         
-
+        
         // test #2: start in CLOSING, send ack, time out
         {
             TCPTestHarness test_2 = TCPTestHarness::in_closing(cfg);
@@ -56,7 +56,7 @@ int main() {
 
             test_2.execute(ExpectState{State::CLOSED});
         }
-        /*
+        
         // test #3: start in FIN_WAIT_2, send FIN, time out
         {
             TCPTestHarness test_3 = TCPTestHarness::in_fin_wait_2(cfg);
@@ -79,7 +79,7 @@ int main() {
 
             test_3.execute(ExpectState{State::CLOSED});
         }
-
+        /*
         // test #4: start in FIN_WAIT_1, ack, FIN, time out
         {
             TCPTestHarness test_4 = TCPTestHarness::in_fin_wait_1(cfg);

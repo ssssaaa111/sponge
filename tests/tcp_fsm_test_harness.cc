@@ -75,6 +75,7 @@ void TestFdAdapter::write(TCPSegment &seg) {
 void TCPTestHarness::send_fin(const WrappingInt32 seqno, const optional<WrappingInt32> ackno) {
     SendSegment step{};
     if (ackno.has_value()) {
+        std::cout<< "ackno.has_value()" <<std::endl;
         step.with_ack(true).with_ackno(ackno.value());
     }
     step.with_fin(true).with_seqno(seqno).with_win(DEFAULT_TEST_WINDOW);
@@ -294,7 +295,9 @@ TCPTestHarness TCPTestHarness::in_closing(const TCPConfig &cfg,
                                           const WrappingInt32 tx_isn,
                                           const WrappingInt32 rx_isn) {
     TCPTestHarness h = in_fin_wait_1(cfg, tx_isn, rx_isn);
+    std::cout<< "in_fin_wait_1 " << tx_isn << " " << rx_isn << std::endl;
     h.send_fin(rx_isn + 1, tx_isn + 1);
+    std::cout<<"received fin" << std::endl;
     h.execute(ExpectOneSegment{}.with_no_flags().with_ack(true).with_ackno(rx_isn + 2));
     return h;
 }

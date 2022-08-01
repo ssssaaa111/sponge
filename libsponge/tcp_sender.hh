@@ -88,6 +88,10 @@ class TCPSender {
     //! (see TCPSegment::length_in_sequence_space())
     size_t bytes_in_flight() const;
 
+    void set_bytes_in_flight(uint64_t x) {
+        _bytes_in_flight = x;
+    };
+
     //! \brief Number of consecutive retransmissions that have occurred in a row
     unsigned int consecutive_retransmissions() const;
 
@@ -98,6 +102,8 @@ class TCPSender {
     //! which will need to fill in the fields that are set by the TCPReceiver
     //! (ackno and window size) before sending.
     std::queue<TCPSegment> &segments_out() { return _segments_out; }
+
+    std::queue<TCPSegment> &segments_on_going() { return _segments_on_going; }
     //!@}
 
     //! \name What is the next sequence number? (used for testing)
@@ -108,6 +114,10 @@ class TCPSender {
 
     //! \brief time waited total
     uint64_t time_has_waited() const { return _time_has_waited; }
+
+    void set_time_has_waited(uint64_t x) { 
+       _time_has_waited  = x; 
+      }
 
     //! \brief relative seqno for the next byte to be sent
     WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
