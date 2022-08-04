@@ -11,6 +11,7 @@
 #include <exception>
 #include <optional>
 #include <sstream>
+#include <iostream>
 
 struct TCPExpectation : public TCPTestStep {
     virtual ~TCPExpectation() {}
@@ -220,6 +221,8 @@ struct ExpectSegment : public TCPExpectation {
     virtual std::string description() const { return "segment sent with " + segment_description(); }
 
     virtual TCPSegment expect_seg(TCPTestHarness &harness) const {
+        std::cout<<"expect_seg 1" <<std::endl;
+
         if (not harness.can_read()) {
             throw SegmentExpectationViolation::violated_verb("existed");
         }
@@ -227,7 +230,10 @@ struct ExpectSegment : public TCPExpectation {
         if (ParseResult::NoError != seg.parse(harness._flt.read())) {
             throw SegmentExpectationViolation::violated_verb("was parsable");
         }
+        std::cout<<"expect_seg 2" <<std::endl;
+
         if (ack.has_value() and seg.header().ack != ack.value()) {
+            std::cout<<"wrong ack bool" <<std::endl;
             throw SegmentExpectationViolation::violated_field("ack", ack.value(), seg.header().ack);
         }
         if (rst.has_value() and seg.header().rst != rst.value()) {
@@ -243,6 +249,7 @@ struct ExpectSegment : public TCPExpectation {
             throw SegmentExpectationViolation::violated_field("seqno", seqno.value(), seg.header().seqno);
         }
         if (ackno.has_value() and seg.header().ackno != ackno.value()) {
+            std::cout<<"wrong ackno" <<std::endl;
             throw SegmentExpectationViolation::violated_field("ackno", ackno.value(), seg.header().ackno);
         }
         if (win.has_value() and seg.header().win != win.value()) {
@@ -260,6 +267,8 @@ struct ExpectSegment : public TCPExpectation {
         if (data.has_value() and seg.payload().str() != *data) {
             throw SegmentExpectationViolation("payloads differ");
         }
+        std::cout<<"expect_seg 3" <<std::endl;
+
         return seg;
     }
 
@@ -271,7 +280,11 @@ struct ExpectOneSegment : public ExpectSegment {
 
     TCPSegment expect_seg(TCPTestHarness &harness) const {
         TCPSegment seg = ExpectSegment::expect_seg(harness);
+        std::cout<<"expect_seg 4" <<std::endl;
+
         if (harness.can_read()) {
+            std::cout<<"expect_seg 5"<< std::endl;
+
             throw SegmentExpectationViolation("The TCP an extra segment when it should not have");
         }
         return seg;

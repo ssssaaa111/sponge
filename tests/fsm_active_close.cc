@@ -57,6 +57,8 @@ int main() {
             test_2.execute(ExpectState{State::CLOSED});
         }
         
+       
+        
         // test #3: start in FIN_WAIT_2, send FIN, time out
         {
             TCPTestHarness test_3 = TCPTestHarness::in_fin_wait_2(cfg);
@@ -69,7 +71,7 @@ int main() {
             test_3.send_fin(rx_seqno, WrappingInt32{2});
             const auto ack_expect = rx_seqno + 1;
             test_3.execute(Tick(1));
-
+            std::cout<<"expected ack:"<< ack_expect <<std::endl;
             test_3.execute(ExpectOneSegment{}.with_ack(true).with_ackno(ack_expect),
                            "test 3 failed: wrong ACK for FIN");
 
@@ -79,7 +81,7 @@ int main() {
 
             test_3.execute(ExpectState{State::CLOSED});
         }
-        /*
+        
         // test #4: start in FIN_WAIT_1, ack, FIN, time out
         {
             TCPTestHarness test_4 = TCPTestHarness::in_fin_wait_1(cfg);
@@ -105,6 +107,7 @@ int main() {
             test_4.execute(ExpectState{State::CLOSED});
         }
 
+        
         // test 5: start in FIN_WAIT_1, ack, FIN, FIN again, time out
         {
             TCPTestHarness test_5 = TCPTestHarness::in_fin_wait_1(cfg);
@@ -147,6 +150,7 @@ int main() {
             test_5.execute(Tick(10));
             test_5.execute(ExpectState{State::CLOSED});
         }
+        /*
 
         // test 6: start in ESTABLISHED, get FIN, get FIN re-tx, send FIN, get ACK, send ACK, time out
         {
