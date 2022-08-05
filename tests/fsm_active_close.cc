@@ -150,8 +150,8 @@ int main() {
             test_5.execute(Tick(10));
             test_5.execute(ExpectState{State::CLOSED});
         }
-        /*
-
+        
+        
         // test 6: start in ESTABLISHED, get FIN, get FIN re-tx, send FIN, get ACK, send ACK, time out
         {
             TCPTestHarness test_6 = TCPTestHarness::in_established(cfg);
@@ -193,7 +193,7 @@ int main() {
 
             test_6.execute(ExpectState{State::CLOSED});
         }
-        */
+        
     } catch (const exception &e) {
         cerr << e.what() << endl;
         return EXIT_FAILURE;

@@ -25,11 +25,13 @@ size_t TCPConnection::unassembled_bytes() const {
     return _receiver.unassembled_bytes();
  }
 
-size_t TCPConnection::time_since_last_segment_received() const { return {}; }
+size_t TCPConnection::time_since_last_segment_received() const { return {_sender.time_has_waited()}; }
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
     std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
+
+    _sender.set_time_has_waited(0);
 
      if (seg.header().rst)
      {
@@ -37,8 +39,10 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
          _receiver.stream_out().set_error();
          return;
      }
+    
     if (seg.header().ack)
     {
+       
         if (state() == TCPState::State::FIN_WAIT_1)
         {
             std::cout<<"in State::FIN_WAIT_1"<<std::endl;
@@ -165,7 +169,8 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
     _sender.tick(ms_since_last_tick);
     std::cout<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
-    std::cout<<_sender.time_has_waited() << "--" << _sender.init_transmissions() << std::endl;
+    std::cout<<"have waited for:"<<_sender.time_has_waited() << "--" << _sender.init_transmissions() << std::endl;
+    
     std::cout<<state().name()<< std::endl;
     if (_sender.time_has_waited() >= 10* _sender.init_transmissions())
     {
@@ -177,6 +182,22 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
         }
         
     }
+
+    if (_sender.time_has_waited() >= _sender.init_transmissions())
+    {
+        if (state() == TCPState::State::FIN_WAIT_1)
+        {
+            std::cout<<"stuck in fin wait 1.................."<<std::endl;
+            TCPSegment seg;
+            seg.header().ack = true;
+            seg.header().ackno = _receiver.ackno().value();
+            seg.header().fin = true;
+            seg.header().seqno = _sender.next_seqno()-1;
+            _segments_out.push(seg);
+            return;
+        }
+    }
+    
 
     if (_sender.time_has_waited() == 4 * _sender.init_transmissions())
     {
@@ -190,13 +211,13 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             _segments_out.push(seg);
         }
 
-        if (state() == TCPState::State::FIN_WAIT_1)
-        {
-            TCPSegment seg;
-            seg.header().fin = true;
-            seg.header().seqno = _sender.next_seqno();
-            _segments_out.push(seg);
-        }
+        // if (state() == TCPState::State::FIN_WAIT_1)
+        // {
+        //     TCPSegment seg;
+        //     seg.header().fin = true;
+        //     seg.header().seqno = _sender.next_seqno();
+        //     _segments_out.push(seg);
+        // }
 
         
     }
