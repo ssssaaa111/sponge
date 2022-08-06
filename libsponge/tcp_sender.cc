@@ -70,7 +70,7 @@ void TCPSender::fill_window() {
 
         seg.header().seqno = wrap(_next_seqno, _isn); 
         string payload = _stream.read(min(remain_size_can_be_fill, max_size));
-        std::cout<<"pushing->"<<payload.size()<<" chars...."<<std::endl;
+        // std::cout<<"pushing->"<<payload.size()<<" chars...."<<std::endl;
         remain_size_can_be_fill -= payload.size();
         //  _window_size -=  payload.size();
         _fin = _stream.eof();
@@ -159,7 +159,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         // 处理tick的各种值
         _retransmission_timeout = _initial_retransmission_timeout;
         _time_has_waited = 0;
-        std::cout<<"_time_has_waited2:" << _time_has_waited<< std::endl;
+        // std::cout<<"_time_has_waited2:" << _time_has_waited<< std::endl;
         _retransmission_timeout_left = _initial_retransmission_timeout;
         if (_segments_on_going.size() > 0)
         {
@@ -178,7 +178,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     _time_has_waited += ms_since_last_tick;
     if (_timer)
     {
-        std::cout<<"_time_has_waited1:" << _time_has_waited<< std::endl;
+        // std::cout<<"_time_has_waited1:" << _time_has_waited<< std::endl;
         if (_retransmission_timeout_left <= ms_since_last_tick)
         {
             _segments_out.push(_segments_on_going.front());

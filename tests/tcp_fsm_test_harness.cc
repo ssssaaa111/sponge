@@ -75,7 +75,7 @@ void TestFdAdapter::write(TCPSegment &seg) {
 void TCPTestHarness::send_fin(const WrappingInt32 seqno, const optional<WrappingInt32> ackno) {
     SendSegment step{};
     if (ackno.has_value()) {
-        std::cout<< "ackno.has_value()" <<std::endl;
+        // std::cout<< "ackno.has_value()" <<std::endl;
         step.with_ack(true).with_ackno(ackno.value());
     }
     step.with_fin(true).with_seqno(seqno).with_win(DEFAULT_TEST_WINDOW);
@@ -145,10 +145,10 @@ void TCPTestHarness::send_data(const WrappingInt32 seqno, const WrappingInt32 ac
 void TCPTestHarness::execute(const TCPTestStep &step, std::string note) {
     try {
         step.execute(*this);
-        int a = 0;
-        std::cout<< "seg_out size:"<<_fsm.segments_out().size() <<std::endl;
+        // int a = 0;
+        // std::cout<< "seg_out size:"<<_fsm.segments_out().size() <<std::endl;
         while (not _fsm.segments_out().empty()) {
-            std::cout<< "pop seg_out :" << ++a << std::endl;
+            // std::cout<< "pop seg_out :" << ++a << std::endl;
             _flt.write(_fsm.segments_out().front());
             _fsm.segments_out().pop();
         }
@@ -234,8 +234,12 @@ TCPTestHarness TCPTestHarness::in_close_wait(const TCPConfig &cfg,
                                              const WrappingInt32 tx_isn,
                                              const WrappingInt32 rx_isn) {
     TCPTestHarness h = in_established(cfg, tx_isn, rx_isn);
+    // std::cout<<"in close wait11111" <<std::endl;
     h.send_fin(rx_isn + 1, tx_isn + 1);
+    // std::cout<<"in close wait3333" <<std::endl;
     h.execute(ExpectOneSegment{}.with_no_flags().with_ack(true).with_ackno(rx_isn + 2));
+    // std::cout<<"in close wait22222" <<std::endl;
+
     return h;
 }
 
@@ -249,6 +253,7 @@ TCPTestHarness TCPTestHarness::in_last_ack(const TCPConfig &cfg,
                                            const WrappingInt32 tx_isn,
                                            const WrappingInt32 rx_isn) {
     TCPTestHarness h = in_close_wait(cfg, tx_isn, rx_isn);
+    std::cout<<"close" <<std::endl;
     h.execute(Close{});
     h.execute(
         ExpectOneSegment{}.with_no_flags().with_fin(true).with_ack(true).with_seqno(tx_isn + 1).with_ackno(rx_isn + 2));
