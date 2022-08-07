@@ -29,7 +29,7 @@ size_t TCPConnection::time_since_last_segment_received() const { return {_sender
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
-    std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
+    // std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
 
     _sender.set_time_has_waited(0);
 
@@ -59,6 +59,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         {
             if (seg.header().ackno == _sender.next_seqno())
             {
+                // std::cout<<"current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
                 _receiver.segment_received(seg);
                 _sender.set_bytes_in_flight(0);
                 _active = 0;
@@ -219,6 +220,19 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             _segments_out.push(seg);
             return;
         }
+
+        if (state() == TCPState::State::LAST_ACK)
+        {
+            // std::cout<<"stuck in fin wait 1.................."<<std::endl;
+            TCPSegment seg;
+            seg.header().ack = true;
+            seg.header().ackno = _receiver.ackno().value();
+            seg.header().fin = true;
+            seg.header().seqno = _sender.next_seqno()-1;
+            _segments_out.push(seg);
+            return;
+        }
+        
     }
     
 
@@ -261,6 +275,7 @@ void TCPConnection::end_input_stream() {
     // _sender.segments_on_going().push(seg);
     _sender.set_bytes_in_flight(1);
     _segments_out.push(seg);
+    _sender.set_time_has_waited(0);
     // std::cout<<"after end_input_stream:"<<state().name()<< std::endl;
     return;
 
