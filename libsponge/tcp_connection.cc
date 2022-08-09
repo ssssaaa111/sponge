@@ -37,14 +37,16 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
      {
          _sender.stream_in().set_error();
          _receiver.stream_out().set_error();
+         _active = 0;
+         _linger_after_streams_finish = 0;
          return;
      }
     
     if (seg.header().ack)
     {
-        if (state() == TCPState::State::ESTABLISHED)
+        if (state() == TCPState::State::CLOSE_WAIT)
         {
-            if (seg.header().fin && seg.header().ackno == _sender.next_seqno())
+            if (seg.header().fin)
             {
                 TCPSegment seg1;
                 seg1.header().ack = true;
@@ -52,6 +54,23 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
+            }
+        }
+
+        if (state() == TCPState::State::ESTABLISHED)
+        {
+            if (seg.header().fin)
+            {
+                TCPSegment seg1;
+                seg1.header().ack = true;
+                _linger_after_streams_finish = false;
+                seg1.header().ackno = seg.header().seqno + 1;
+                _segments_out.push(seg1);
+                _receiver.segment_received(seg);
+            }
+            else if(seg.payload().size() == 0){
+                // TDDO::this is going to change......
+                return;
             }
         }
 

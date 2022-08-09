@@ -44,7 +44,7 @@ long StreamReassembler::merge_block(block_node &elm1, const block_node &elm2) {
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
     // _output.end_input
-    if (index > _head_index + _capacity) {
+    if (index >= _head_index + _capacity) {
         return;
     }
     long merged_bytes = 0;
