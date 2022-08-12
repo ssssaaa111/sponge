@@ -44,6 +44,17 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     
     if (seg.header().ack)
     {
+        if (state() == TCPState::State::LISTEN)
+        {
+            // std::cout<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
+            // TCPSegment seg1;
+            // seg1.header().ack = true;
+            // _linger_after_streams_finish = false;
+            // seg1.header().ackno = seg.header().seqno + 1;
+            // _segments_out.push(seg1);
+            return;
+        }
+        
         if (state() == TCPState::State::CLOSE_WAIT)
         {
             if (seg.header().fin)
@@ -266,14 +277,6 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             seg.header().seqno = _sender.next_seqno();
             _segments_out.push(seg);
         }
-
-        // if (state() == TCPState::State::FIN_WAIT_1)
-        // {
-        //     TCPSegment seg;
-        //     seg.header().fin = true;
-        //     seg.header().seqno = _sender.next_seqno();
-        //     _segments_out.push(seg);
-        // }
 
         
     }
