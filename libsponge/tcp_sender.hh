@@ -112,6 +112,8 @@ class TCPSender {
     //! \brief absolute seqno for the next byte to be sent
     uint64_t next_seqno_absolute() const { return _next_seqno; }
 
+    void set_next_seqno_absolute(uint64_t x ) { _next_seqno = x; }
+
     //! \brief time waited total
     uint64_t time_has_waited() const { return _time_has_waited; }
 

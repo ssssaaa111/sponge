@@ -44,6 +44,18 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     
     if (seg.header().ack)
     {
+        if (state() == TCPState::State::SYN_RCVD)
+        {
+            if (seg.header().ackno == _sender.next_seqno())
+            {
+                // std::cout<<_sender.next_seqno_absolute() <<" "<< _sender.bytes_in_flight()<<std::endl;
+                _sender.set_bytes_in_flight(0);
+                // TODO::next_abs_sqno is need to add one?
+                return;
+            }
+            
+        }
+        
         if (state() == TCPState::State::LISTEN)
         {
             // std::cout<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
@@ -153,11 +165,50 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             _sender.set_bytes_in_flight(0);
             return;
         }
+
+        if (state() == TCPState::State::SYN_RCVD)
+        {
+            _sender.set_bytes_in_flight(0);
+            return;
+        }
+        
+
+        
+        
         _sender.ack_received(seg.header().ackno, seg.header().win);
         seg.header().ackno;
         _receiver.segment_received(seg);
         
     }
+
+    if (state() == TCPState::State::LISTEN)
+        {
+            std::cout<<"listen"<<std::endl;
+            if (seg.header().syn)
+            {
+                TCPSegment seg1;
+                seg1.header().ack = true;
+                seg1.header().syn = true;
+                seg1.header().ackno = seg.header().seqno + 1;
+                _segments_out.push(seg1);
+                _sender.set_next_seqno_absolute(1);
+                _sender.set_bytes_in_flight(1);
+                _receiver.segment_received(seg);
+                // std::cout<<"after seg out size:" << _segments_out.size() <<std::endl;
+                return;       
+            }
+            
+        }
+
+    if (state() == TCPState::State::SYN_SENT && seg.header().syn)
+    {
+        // TCPSegment seg1;
+        // seg1.header().ack = true;
+        // seg1.header().ackno = seg.header().seqno + 1;
+        // _segments_out.push(seg1);
+        _receiver.segment_received(seg);
+    }
+    
 
      
 
