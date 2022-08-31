@@ -42,6 +42,7 @@ void TCPSender::fill_window() {
     {
         seg.header().syn = true;
         seg.header().seqno = _isn;
+        // seg.header().win = 
         _segments_out.push(seg);
         _bytes_in_flight += seg.length_in_sequence_space();
         _next_seqno += 1;

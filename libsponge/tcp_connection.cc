@@ -29,7 +29,7 @@ size_t TCPConnection::time_since_last_segment_received() const { return {_sender
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
-    // std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
+    std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
 
     _sender.set_time_has_waited(0);
 
@@ -46,9 +46,21 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     {
         if (state() == TCPState::State::SYN_RCVD)
         {
+            std::cout<<"1111111166666666666666666666666:"<< seg.header().win <<std::endl;
+            std::cout<<"1111111166666666666666666666666:"<< seg.header().ackno.raw_value() <<std::endl;
+            std::cout<<"1111111166666666666666666666666:"<< _sender.next_seqno().raw_value() <<std::endl;
+
+            if (seg.header().win > 0)
+            {
+                            std::cout<<"1111111166666666666666666666666:-----"<< _sender.next_seqno().raw_value() <<std::endl;
+
+                _sender.ack_received(seg.header().ackno, seg.header().win);
+            }
             if (seg.header().ackno == _sender.next_seqno())
             {
-                // std::cout<<_sender.next_seqno_absolute() <<" "<< _sender.bytes_in_flight()<<std::endl;
+                
+                
+                std::cout<<_sender.next_seqno_absolute() <<" "<< _sender.bytes_in_flight()<<std::endl;
                 _sender.set_bytes_in_flight(0);
                 // TODO::next_abs_sqno is need to add one?
                 return;
@@ -93,6 +105,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             }
             else if(seg.payload().size() == 0){
                 // TDDO::this is going to change......
+                _receiver.segment_received(seg);
+                _sender.ack_received(seg.header().ackno, seg.header().win);
+                push_seg_out();
                 return;
             }
         }
@@ -172,7 +187,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             return;
         }
         
-
+         if (state() == TCPState::State::SYN_SENT && seg.header().syn)
+        {
+            TCPSegment seg1;
+            seg1.header().ack = true;
+            seg1.header().ackno = seg.header().seqno + 1;
+            _segments_out.push(seg1);
+            _receiver.segment_received(seg);
+        }
         
         
         _sender.ack_received(seg.header().ackno, seg.header().win);
@@ -189,11 +211,15 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 TCPSegment seg1;
                 seg1.header().ack = true;
                 seg1.header().syn = true;
+                seg1.header().seqno = _sender.next_seqno();
                 seg1.header().ackno = seg.header().seqno + 1;
+                seg1.header().win = _cfg.recv_capacity;
                 _segments_out.push(seg1);
                 _sender.set_next_seqno_absolute(1);
                 _sender.set_bytes_in_flight(1);
+                _sender.set_next_seqno(1);
                 _receiver.segment_received(seg);
+                // _sender.ack_received(seg.header().ackno, seg.header().win);
                 // std::cout<<"after seg out size:" << _segments_out.size() <<std::endl;
                 return;       
             }
@@ -237,7 +263,7 @@ void TCPConnection::push_seg_out() {
         _segments_out.push(seg);
         return;
     }    
-    else if(in_syn_recv()) {
+    else if(state() == TCPState::State::SYN_RCVD) {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
@@ -250,6 +276,11 @@ void TCPConnection::push_seg_out() {
     {
         auto seg = _sender.segments_out().front();
         _sender.segments_out().pop();
+        if (_receiver.ackno().has_value()) {
+            seg.header().ack = true;
+            seg.header().ackno = _receiver.ackno().value();
+            seg.header().win = _receiver.window_size();
+        }
         _segments_out.push(seg);
 
     }
@@ -260,7 +291,8 @@ size_t TCPConnection::write(const string &data) {
     // DUMMY_CODE(data);
     
     size_t size = _sender.stream_in().write(data);
-    _sender.fill_window();
+    // _sender.fill_window();
+    push_seg_out();
     return size;
 
     
