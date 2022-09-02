@@ -109,6 +109,13 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 _sender.ack_received(seg.header().ackno, seg.header().win);
                 push_seg_out();
                 return;
+            } else {
+                TCPSegment seg1;
+                seg1.header().ack = true;
+                seg1.header().ackno = seg.header().seqno + 1;
+                _segments_out.push(seg1);
+                _receiver.segment_received(seg);
+                return;
             }
         }
 
@@ -196,10 +203,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             _receiver.segment_received(seg);
         }
         
-        
+        std::cout<<"......666666666666666666666666666666666666666"<<std::endl;
         _sender.ack_received(seg.header().ackno, seg.header().win);
         seg.header().ackno;
         _receiver.segment_received(seg);
+        push_seg_out();
         
     }
 
