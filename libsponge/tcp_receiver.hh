@@ -61,8 +61,13 @@ class TCPReceiver {
     //! \brief number of bytes stored but not yet reassembled
     size_t unassembled_bytes() const { return _reassembler.unassembled_bytes(); }
 
+    uint64_t get_checkpoint() const {return _checkpoint;}
+
+
     //! \brief handle an inbound segment
     void segment_received(const TCPSegment &seg);
+
+    uint64_t unwrap_sqn(WrappingInt32 w) {return unwrap(w, _init_sqn, _checkpoint);}
 
     //! \name "Output" interface for the reader
     //!@{

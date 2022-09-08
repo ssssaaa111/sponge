@@ -11,7 +11,7 @@ void DUMMY_CODE(Targs &&.../* unused */) {}
 using namespace std;
 
 void TCPReceiver::segment_received(const TCPSegment &seg) {
-    DUMMY_CODE(seg);
+    // DUMMY_CODE(seg);
     _len = seg.length_in_sequence_space();
     if (_is_started) {
         if (seg.header().syn) {
