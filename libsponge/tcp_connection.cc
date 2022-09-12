@@ -124,6 +124,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             } else {
                 TCPSegment seg1;
                 seg1.header().ack = true;
+                seg1.header().win = _receiver.window_size();
+                std::cout<<"send back ack"<<std::endl;
                 // uint32_t tmp = _receiver.window_size() + _receiver.ackno().value().raw_value();
                 std::cout<< "1->"<<_receiver.unwrap_sqn(seg.header().seqno) <<" 2-> "<< _receiver.unwrap_sqn(_receiver.ackno().value() + _receiver.window_size()) << std::endl;
                 _receiver.segment_received(seg);
@@ -322,6 +324,7 @@ void TCPConnection::push_seg_out() {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
+            //std::cout<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
             seg.header().win = _receiver.window_size();
         }
         _segments_out.push(seg);
@@ -336,6 +339,7 @@ size_t TCPConnection::write(const string &data) {
     size_t size = _sender.stream_in().write(data);
     // _sender.fill_window();
     push_seg_out();
+    std::cout<< "write into len:" << size<< std::endl;
     return size;
 
     
@@ -346,8 +350,37 @@ size_t TCPConnection::write(const string &data) {
 void TCPConnection::tick(const size_t ms_since_last_tick) { 
     // DUMMY_CODE(ms_since_last_tick); 
     // std::cout<<"seg out size  before tick:" << _segments_out.size() <<std::endl;
+    if(state() == TCPState::State::ESTABLISHED) {
+        std::cout<<_sender.consecutive_retransmissions() << "-> "<<  TCPConfig::MAX_RETX_ATTEMPTS <<std::endl;
+        if (_sender.consecutive_retransmissions() >= TCPConfig::MAX_RETX_ATTEMPTS)
+        {
+            _sender.stream_in().set_error();
+            _receiver.stream_out().set_error();
+            _active = false;
+            _linger_after_streams_finish = false;
+            TCPSegment seg;
+            seg.header().rst = true;
+            _segments_out.push(seg);
+            return;
+        }
+        
+    }
 
     _sender.tick(ms_since_last_tick);
+    while (_sender.segments_out().size() != 0)
+    {
+        auto seg = _sender.segments_out().front();
+        _sender.segments_out().pop();
+        if (_receiver.ackno().has_value()) {
+            seg.header().ack = true;
+            seg.header().ackno = _receiver.ackno().value();
+            seg.header().win = _receiver.window_size();
+        }
+        _segments_out.push(seg);
+
+    }
+
+    
     // std::cout<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
     // std::cout<<"have waited for:"<<_sender.time_has_waited() << "--" << _sender.init_transmissions() << std::endl;
     
