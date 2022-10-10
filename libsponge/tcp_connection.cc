@@ -29,21 +29,23 @@ size_t TCPConnection::time_since_last_segment_received() const { return {_sender
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
-    std::cout<<"before seg_recieved:"<<state().name()<< std::endl;
+    // std::cerr<<"before seg_recieved:"<<get_status(state())<< std::endl;
 
     _sender.set_time_has_waited(0);
 
      if (seg.header().rst)
      {
+        //  std::cerr<<"get a rst: close  connect" <<std::endl;
          _sender.stream_in().set_error();
          _receiver.stream_out().set_error();
          _active = 0;
          _linger_after_streams_finish = 0;
+        //  std::cerr<<"14after seg_recieved:"<<get_status(state())<< std::endl;
          return;
      }
      
      // resend fin
-     if (state() == TCPState::State::TIME_WAIT && seg.header().fin)
+     if ((state() == TCPState::State::TIME_WAIT || state() == TCPState::State::CLOSING)  && seg.header().fin)
     {
         TCPSegment seg1;
         seg1.header().ack = true;
@@ -51,20 +53,26 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         seg1.header().ackno = seg.header().seqno + 1;
         _segments_out.push(seg1);
         _receiver.segment_received(seg);
+         std::cerr<<"resend ack to client:"<<get_status(state())<< std::endl;
         return;
     }
     
     if (seg.header().ack)
     {
+        if (seg.header().fin)
+        {
+            std::cerr<<"get fin in :"<<get_status(state())<< std::endl;
+        }
+        
         if (state() == TCPState::State::SYN_RCVD)
         {
-            std::cout<<"1111111166666666666666666666666:"<< seg.header().win <<std::endl;
-            std::cout<<"1111111166666666666666666666666:"<< seg.header().ackno.raw_value() <<std::endl;
-            std::cout<<"1111111166666666666666666666666:"<< _sender.next_seqno().raw_value() <<std::endl;
+            // std::cerr<<"1111111166666666666666666666666:"<< seg.header().win <<std::endl;
+            // std::cerr<<"1111111166666666666666666666666:"<< seg.header().ackno.raw_value() <<std::endl;
+            // std::cerr<<"1111111166666666666666666666666:"<< _sender.next_seqno().raw_value() <<std::endl;
 
             if (seg.header().win > 0)
             {
-                            std::cout<<"1111111166666666666666666666666:-----"<< _sender.next_seqno().raw_value() <<std::endl;
+                            // std::cerr<<"1111111166666666666666666666666:-----"<< _sender.next_seqno().raw_value() <<std::endl;
 
                 _sender.ack_received(seg.header().ackno, seg.header().win);
             }
@@ -72,9 +80,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             {
                 
                 
-                std::cout<<_sender.next_seqno_absolute() <<" "<< _sender.bytes_in_flight()<<std::endl;
+                // std::cerr<<_sender.next_seqno_absolute() <<" "<< _sender.bytes_in_flight()<<std::endl;
                 _sender.set_bytes_in_flight(0);
+                // std::cerr<<"from SYN_RCVD to->>>>" << get_status(state()) << std::endl;;
                 // TODO::next_abs_sqno is need to add one?
+                // std::cerr<<"12after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
             
@@ -82,12 +92,13 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         
         if (state() == TCPState::State::LISTEN)
         {
-            // std::cout<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
+            // std::cerr<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
             // TCPSegment seg1;
             // seg1.header().ack = true;
             // _linger_after_streams_finish = false;
             // seg1.header().ackno = seg.header().seqno + 1;
             // _segments_out.push(seg1);
+        //  std::cerr<<"11after seg_recieved:"<<get_status(state())<< std::endl;
             return;
         }
         
@@ -101,6 +112,19 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
+            }
+        }
+
+        if (state() == TCPState::State::TIME_WAIT)
+        {
+            if (seg.header().fin)
+            {
+                TCPSegment seg1;
+                seg1.header().ack = true;
+                seg1.header().ackno = seg.header().seqno + 1;
+                _segments_out.push(seg1);
+                _receiver.segment_received(seg);
+                return;
             }
         }
 
@@ -120,25 +144,20 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 _receiver.segment_received(seg);
                 _sender.ack_received(seg.header().ackno, seg.header().win);
                 push_seg_out();
+        //  std::cerr<<"10after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             } else {
                 TCPSegment seg1;
                 seg1.header().ack = true;
                 seg1.header().win = _receiver.window_size();
-                std::cout<<"send back ack"<<std::endl;
-                // uint32_t tmp = _receiver.window_size() + _receiver.ackno().value().raw_value();
-                std::cout<< "1->"<<_receiver.unwrap_sqn(seg.header().seqno) <<" 2-> "<< _receiver.unwrap_sqn(_receiver.ackno().value() + _receiver.window_size()) << std::endl;
+                // std::cerr<<"send back ack"<<std::endl;
+                // std::cerr<< "established->"<<_receiver.unwrap_sqn(seg.header().seqno) <<" 2-> "<< _receiver.unwrap_sqn(_receiver.ackno().value() + _receiver.window_size()) << std::endl;
+                // std::cerr<< "established ack_no is->"<<_receiver.unwrap_sqn(_receiver.ackno().value()) << std::endl;
                 _receiver.segment_received(seg);
-                if (_receiver.unwrap_sqn(seg.header().seqno) >= _receiver.unwrap_sqn(_receiver.ackno().value() 
-                    + _receiver.window_size()))
-                {
-                    seg1.header().ackno = _receiver.ackno().value();
-                } else {
-                    seg1.header().ackno = _receiver.ackno().value();
-                }
-                
-                _segments_out.push(seg1);
-                
+                seg1.header().ackno = _receiver.ackno().value();
+                // std::cerr<< "established after ack_no is->"<<_receiver.unwrap_sqn(_receiver.ackno().value()) << std::endl;
+                _segments_out.push(seg1); 
+        //  std::cerr<<"9after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
         }
@@ -147,22 +166,24 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         {
             if (seg.header().ackno == _sender.next_seqno())
             {
-                // std::cout<<"current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
+                // std::cerr<<"current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
                 _receiver.segment_received(seg);
                 _sender.set_bytes_in_flight(0);
                 _active = 0;
+            } else {
+                std::cerr<<"current last ack, but bad sqn:"<<seg.header().ackno <<"but need"<<_sender.next_seqno()<<std::endl;
             }
         }
         
        
         if (state() == TCPState::State::FIN_WAIT_1)
         {
-            std::cout<<"in State::FIN_WAIT_1"<<std::endl;
-            std::cout<<seg.header().ackno << " -> "<<_sender.next_seqno()<<std::endl;
+            // std::cerr<<"in State::FIN_WAIT_1"<<std::endl;
+            // std::cerr<<seg.header().ackno << " -> "<<_sender.next_seqno()<<std::endl;
             if (seg.header().fin && seg.header().ackno == _sender.next_seqno())
             {
-                std::cout<<"change to State::TIME_WAIT"<<std::endl;
-                std::cout<<"before seg out size:" << _segments_out.size() <<std::endl;
+                // std::cerr<<"change to State::TIME_WAIT"<<std::endl;
+                // std::cerr<<"before seg out size:" << _segments_out.size() <<std::endl;
                 _sender.set_bytes_in_flight(0);
                 _sender.set_time_has_waited(0);
                 TCPSegment seg1;
@@ -170,13 +191,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
-                std::cout<<"after seg out size:" << _segments_out.size() <<std::endl;
+                // std::cerr<<"after seg out size:" << _segments_out.size() <<std::endl;
+        //  std::cerr<<"8after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
 
             if (seg.header().ackno == _sender.next_seqno())
             {
-                std::cout<<"change to State::FIN_WAIT_2"<<std::endl;
+                // std::cerr<<"change to State::FIN_WAIT_2"<<std::endl;
                 _sender.set_bytes_in_flight(0);
                 _sender.set_time_has_waited(0);
                 // no need to send anything
@@ -185,6 +207,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 // seg1.header().ackno = seg.header().seqno + 1;
                 // _segments_out.push(seg1);
                 _receiver.segment_received(seg);
+        //  std::cerr<<"7after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
             if (seg.header().fin)
@@ -194,12 +217,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
-                std::cout<<"change to State::Closing"<<std::endl;
+                // std::cerr<<"change to State::Closing"<<std::endl;
+        //  std::cerr<<"6after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
             
-            std::cout<<"missed"<<std::endl;
-            
+            std::cerr<<"missed::get a fin "<<seg.header().fin<<" state:"<<get_status(state())<<std::endl;
+            std::cerr<<"missed::get a fin "<<seg.header().ackno<<" expect:"<<_sender.next_seqno()<<std::endl;
+        
         }
 
         if (state() == TCPState::State::FIN_WAIT_2)
@@ -211,8 +236,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
-                // std::cout<<"seg out size:" << _segments_out.size() <<std::endl;
-                // std::cout<<"seg ackno:" << seg1.header().ackno <<std::endl;
+                // std::cerr<<"seg out size:" << _segments_out.size() <<std::endl;
+                // std::cerr<<"seg ackno:" << seg1.header().ackno <<std::endl;
+        //  std::cerr<<"5after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
             
@@ -222,12 +248,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         {
             _sender.set_time_has_waited(0);
             _sender.set_bytes_in_flight(0);
+        //  std::cerr<<"4after seg_recieved:"<<get_status(state())<< std::endl;
             return;
         }
 
         if (state() == TCPState::State::SYN_RCVD)
         {
             _sender.set_bytes_in_flight(0);
+        //  std::cerr<<"3after seg_recieved:"<<get_status(state())<< std::endl;
             return;
         }
         
@@ -236,11 +264,12 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             TCPSegment seg1;
             seg1.header().ack = true;
             seg1.header().ackno = seg.header().seqno + 1;
+            seg1.header().win = _cfg.recv_capacity;
             _segments_out.push(seg1);
             _receiver.segment_received(seg);
         }
         
-        std::cout<<"......666666666666666666666666666666666666666"<<std::endl;
+        // std::cerr<<"......666666666666666666666666666666666666666"<<std::endl;
         _sender.ack_received(seg.header().ackno, seg.header().win);
         seg.header().ackno;
         _receiver.segment_received(seg);
@@ -250,7 +279,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
     if (state() == TCPState::State::LISTEN)
         {
-            std::cout<<"listen"<<std::endl;
+            // std::cerr<<"listen"<<std::endl;
             if (seg.header().syn)
             {
                 TCPSegment seg1;
@@ -265,7 +294,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 _sender.set_next_seqno(1);
                 _receiver.segment_received(seg);
                 // _sender.ack_received(seg.header().ackno, seg.header().win);
-                // std::cout<<"after seg out size:" << _segments_out.size() <<std::endl;
+                // std::cerr<<"after seg out size:" << _segments_out.size() <<std::endl;
+        //  std::cerr<<"2after seg_recieved:"<<get_status(state())<< std::endl;
                 return;       
             }
             
@@ -283,8 +313,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
      
 
-    // std::cout<<" after seg_recieved:"<<state().name()<< std::endl;
+    // std::cerr<<" after seg_recieved:"<<state().name()<< std::endl;
     push_seg_out();
+        //  std::cerr<<"1after seg_recieved:"<<get_status(state())<< std::endl;
  }
 
 bool TCPConnection::active() const { 
@@ -292,7 +323,7 @@ bool TCPConnection::active() const {
 }
 
 void TCPConnection::push_seg_out() {
-    // std::cout<<"sender status is: "<<TCPState::state_summary(_sender) << std::endl;
+    // std::cerr<<"push seg out sender status is: "<<get_status(state()) << std::endl;
     if (TCPSenderStateSummary::FIN_SENT == TCPState::state_summary(_sender))
     {
         TCPSegment seg;
@@ -324,7 +355,7 @@ void TCPConnection::push_seg_out() {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
-            //std::cout<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
+            //std::cerr<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
             seg.header().win = _receiver.window_size();
         }
         _segments_out.push(seg);
@@ -339,7 +370,7 @@ size_t TCPConnection::write(const string &data) {
     size_t size = _sender.stream_in().write(data);
     // _sender.fill_window();
     push_seg_out();
-    std::cout<< "write into len:" << size<< std::endl;
+    // std::cerr<< "write into len:" << size<< std::endl;
     return size;
 
     
@@ -349,11 +380,12 @@ size_t TCPConnection::write(const string &data) {
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) { 
     // DUMMY_CODE(ms_since_last_tick); 
-    // std::cout<<"seg out size  before tick:" << _segments_out.size() <<std::endl;
+    // std::cerr<<"seg out size  before tick:" << _segments_out.size() <<std::endl;
     if(state() == TCPState::State::ESTABLISHED) {
-        std::cout<<_sender.consecutive_retransmissions() << "-> "<<  TCPConfig::MAX_RETX_ATTEMPTS <<std::endl;
+        // std::cerr<<_sender.consecutive_retransmissions() << "-> "<<  TCPConfig::MAX_RETX_ATTEMPTS <<std::endl;
         if (_sender.consecutive_retransmissions() >= TCPConfig::MAX_RETX_ATTEMPTS)
         {
+            std::cerr<<"excceed max retx attempts"<<std::endl;
             _sender.stream_in().set_error();
             _receiver.stream_out().set_error();
             _active = false;
@@ -381,10 +413,11 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     }
 
     
-    // std::cout<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
-    // std::cout<<"have waited for:"<<_sender.time_has_waited() << "--" << _sender.init_transmissions() << std::endl;
+    // std::cerr<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
+    // std::cerr<<"have waited for:"<<_sender.time_has_waited() << "--" << _sender.init_transmissions() <<" end-----"<<std::endl;
+    // std::cerr<<get_status(state()) <<" end-----"<<std::endl;
     
-    // std::cout<<state().name()<< std::endl;
+    // std::cerr<<"tick:"<<get_status(state())<< std::endl;
     if (_sender.time_has_waited() >= 10* _sender.init_transmissions())
     {
         
@@ -400,7 +433,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     {
         if (state() == TCPState::State::FIN_WAIT_1)
         {
-            // std::cout<<"stuck in fin wait 1.................."<<std::endl;
+            // std::cerr<<"stuck in fin wait 1.................."<<std::endl;
             TCPSegment seg;
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
@@ -412,7 +445,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
         if (state() == TCPState::State::LAST_ACK)
         {
-            // std::cout<<"stuck in fin wait 1.................."<<std::endl;
+            std::cerr<<"stuck in LAST_ACK.................."<<std::endl;
             TCPSegment seg;
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
@@ -439,12 +472,12 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
         
     }
-    // std::cout<<"seg out size  after tick:" << _segments_out.size() <<std::endl;
+    // std::cerr<<"seg out size  after tick:" << _segments_out.size() <<std::endl;
     
     }
 
 void TCPConnection::end_input_stream() {
-    // std::cout<<"before end_input_stream:"<<state().name()<< std::endl;
+    // std::cerr<<"before end_input_stream:"<<state().name()<< std::endl;
     _sender.stream_in().end_input();
     TCPSegment seg;
     seg.header().ack = true;
@@ -457,7 +490,7 @@ void TCPConnection::end_input_stream() {
     _sender.set_bytes_in_flight(1);
     _segments_out.push(seg);
     _sender.set_time_has_waited(0);
-    // std::cout<<"after end_input_stream:"<<state().name()<< std::endl;
+    // std::cerr<<"after end_input_stream:"<<state().name()<< std::endl;
     return;
 
 
@@ -474,7 +507,7 @@ bool TCPConnection::in_syn_sent() {
 }
 
 bool TCPConnection::in_syn_recv() { 
-    // std::cout<<"status:"<<"in_syn_recv"<<std::endl;
+    // std::cerr<<"status:"<<"in_syn_recv"<<std::endl;
     return _receiver.ackno().has_value() && !_receiver.stream_out().input_ended(); 
     }
 

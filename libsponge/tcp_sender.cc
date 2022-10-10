@@ -30,6 +30,7 @@ uint64_t TCPSender::bytes_in_flight() const {
     }
 
 void TCPSender::fill_window() {
+    //  std::cerr<<"fill windows strings"<<std::endl;
     TCPSegment seg;
     size_t win = _window_size > 0 ? _window_size : 1;
     // if (_window_size == 0)
@@ -71,7 +72,8 @@ void TCPSender::fill_window() {
 
         seg.header().seqno = wrap(_next_seqno, _isn); 
         string payload = _stream.read(min(remain_size_can_be_fill, max_size));
-        // std::cout<<"pushing->"<<payload.size()<<" chars...."<<std::endl;
+        // std::cerr<<"sending strings->"<<payload<<std::endl;
+        // std::cerr<<remain_size_can_be_fill<<":size:"<<max_size<<std::endl;
         remain_size_can_be_fill -= payload.size();
         //  _window_size -=  payload.size();
         _fin = _stream.eof();
@@ -91,7 +93,7 @@ void TCPSender::fill_window() {
         
         if (seg.length_in_sequence_space() == 0)
         {
-            // std::cout<<"nothing to send....."<<std::endl;
+            // std::cerr<<"nothing to send....."<<std::endl;
             break;
         }
         // if (_fin && seg.length_in_sequence_space() == 1 && _bytes_in_flight > 0)

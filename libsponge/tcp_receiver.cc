@@ -1,4 +1,5 @@
 #include "tcp_receiver.hh"
+#include<iostream>
 
 // Dummy implementation of a TCP receiver
 
@@ -38,6 +39,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         if (stream_index > 0) {
             stream_index -= 1;
         }
+        // std::cout<<"recieve string->"<< seg.payload().copy() <<std::endl;
         _reassembler.push_substring(seg.payload().copy(), stream_index, seg.header().fin);
         // head index 属于 stream index，不包括syn，所以这里-1和+1抵消
         _last_checkpoint = _checkpoint;

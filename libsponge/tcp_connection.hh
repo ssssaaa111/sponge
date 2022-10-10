@@ -23,11 +23,86 @@ class TCPConnection {
     bool _active = true;
 
   public:
+    const std::string STATE[12] =
+    {
+        "LISTEN",   //!< Listening for a peer to connect
+        "SYN_RCVD",     //!< Got the peer's SYN
+        "SYN_SENT",     //!< Sent a SYN to initiate a connection
+        "ESTABLISHED",  //!< Three-way handshake complete
+        "CLOSE_WAIT",   //!< Remote side has sent a FIN, connection is half-open
+        "LAST_ACK",     //!< Local side sent a FIN from CLOSE_WAIT, waiting for ACK
+        "FIN_WAIT_1",   //!< Sent a FIN to the remote side, not yet ACK'd
+        "FIN_WAIT_2",   //!< Received an ACK for previously-sent FIN
+        "CLOSING",      //!< Received a FIN just after we sent one
+        "TIME_WAIT",    //!< Both sides have sent FIN and ACK'd, waiting for 2 MSL
+        "CLOSED",       //!< A connection that has terminated normally
+        "RESET", 
+    };
+
     //! \name "Input" interface for the writer
     //!@{
 
     //! \brief Initiate a connection by sending a SYN segment
     void connect();
+
+    std::string get_status(TCPState s) {
+      if (s == TCPState::State::LISTEN)
+      {
+        return STATE[0];
+      }
+
+      if (s == TCPState::State::SYN_RCVD)
+      {
+        return STATE[1];
+      }
+
+      if (s == TCPState::State::SYN_SENT)
+      {
+        return STATE[2];
+      }
+
+      if (s == TCPState::State::ESTABLISHED)
+      {
+        return STATE[3];
+      }
+      
+      if (s == TCPState::State::CLOSE_WAIT)
+      {
+        return STATE[4];
+      }
+      if (s == TCPState::State::LAST_ACK)
+      {
+        return STATE[5];
+      }
+      if (s == TCPState::State::FIN_WAIT_1)
+      {
+        return STATE[6];
+      }
+      if (s == TCPState::State::FIN_WAIT_2)
+      {
+        return STATE[7];
+      }
+      if (s == TCPState::State::CLOSING)
+      {
+        return STATE[8];
+      }
+      if (s == TCPState::State::TIME_WAIT)
+      {
+        return STATE[9];
+      }
+
+      if (s == TCPState::State::CLOSED)
+      {
+        return STATE[10];
+      }
+
+      if (s == TCPState::State::RESET)
+      {
+        return STATE[11];
+      }
+
+    return "error status";
+    }
 
     //! \brief Write data to the outbound byte stream, and send it over TCP if possible
     //! \returns the number of bytes from `data` that were actually written.

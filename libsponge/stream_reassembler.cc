@@ -59,6 +59,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             _eof_flag = true;
         }
         if (_eof_flag && empty()) {
+            // std::cout<<"end of input 1" << std::endl;
             _output.end_input();
         }
         return;
@@ -95,6 +96,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             _eof_flag = true;
         }
         if (_eof_flag && empty()) {
+            //  std::cout<<"end of input 2" << std::endl;
             _output.end_input();
         }
 
