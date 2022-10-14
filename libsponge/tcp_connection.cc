@@ -29,10 +29,11 @@ size_t TCPConnection::time_since_last_segment_received() const { return {_sender
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
-    // std::cerr<<"before seg_recieved:"<<get_status(state())<< std::endl;
-
-    _sender.set_time_has_waited(0);
-
+    if (state() != TCPState::State::TIME_WAIT)
+    {
+       _sender.set_time_has_waited(0);
+    }
+    
      if (seg.header().rst)
      {
         //  std::cerr<<"get a rst: close  connect" <<std::endl;
@@ -122,6 +123,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             {
                 TCPSegment seg1;
                 seg1.header().ack = true;
+                _sender.set_time_has_waited(0);
                 seg1.header().ackno = seg.header().seqno + 1;
                 _segments_out.push(seg1);
                 _receiver.segment_received(seg);
@@ -426,7 +428,12 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     // std::cerr<<_sender.consecutive_retransmissions() << "--" << _sender.init_transmissions() << std::endl;
     // std::cerr<<"have waited for:"<<_sender.time_has_waited() << "--" << _sender.init_transmissions() <<" end-----"<<std::endl;
     // std::cerr<<get_status(state()) <<" end-----"<<std::endl;
-    
+     if (state() == TCPState::State::TIME_WAIT && ms_since_last_tick > 0)
+        {
+            // std::cerr<<get_status(state()) <<" end-----"<<std::endl;
+            std::cerr<<get_status(state())<<":time passed:"<<ms_since_last_tick<<":has_waited:"<<_sender.time_has_waited() << ":init wait:" << _sender.init_transmissions()<<" sqn:"<< _sender.next_seqno() << std::endl;
+            
+        }
     // std::cerr<<"tick:"<<get_status(state())<< std::endl;
     if (_sender.time_has_waited() >= 10* _sender.init_transmissions())
     {

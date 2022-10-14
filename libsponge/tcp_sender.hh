@@ -4,6 +4,7 @@
 #include "byte_stream.hh"
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
+#include<iostream>
 #include "wrapping_integers.hh"
 
 #include <functional>
@@ -118,6 +119,7 @@ class TCPSender {
     uint64_t time_has_waited() const { return _time_has_waited; }
 
     void set_time_has_waited(uint64_t x) { 
+      // std::cerr<<"_time_has_waited has been set to :"<< x << std::endl;
        _time_has_waited  = x; 
       }
 

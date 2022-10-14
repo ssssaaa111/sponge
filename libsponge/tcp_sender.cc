@@ -162,7 +162,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         // 处理tick的各种值
         _retransmission_timeout = _initial_retransmission_timeout;
         _time_has_waited = 0;
-        // std::cout<<"_time_has_waited2:" << _time_has_waited<< std::endl;
+        // std::cerr<<"_time_has_waited has been set to 0:"<< std::endl;
         _retransmission_timeout_left = _initial_retransmission_timeout;
         if (_segments_on_going.size() > 0)
         {
@@ -178,7 +178,16 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
+    if (ms_since_last_tick >0)
+    {
+        // std::cerr<<"before_time_has_waited:" << _time_has_waited<< std::endl;
+    }
     _time_has_waited += ms_since_last_tick;
+    if (ms_since_last_tick >0)
+    {
+        // std::cerr<<"after_time_has_waited:" << _time_has_waited<< std::endl;
+    }
+    
     if (_timer)
     {
         // std::cout<<"_time_has_waited1:" << _time_has_waited<< std::endl;
