@@ -43,7 +43,7 @@ void TCPSender::fill_window() {
     {
         seg.header().syn = true;
         seg.header().seqno = _isn;
-        // seg.header().win = 
+        seg.header().win = _stream.remaining_capacity();
         _segments_out.push(seg);
         _bytes_in_flight += seg.length_in_sequence_space();
         _next_seqno += 1;
@@ -72,7 +72,10 @@ void TCPSender::fill_window() {
 
         seg.header().seqno = wrap(_next_seqno, _isn); 
         string payload = _stream.read(min(remain_size_can_be_fill, max_size));
-        // std::cerr<<"sending strings->"<<payload<<std::endl;
+        std::cerr<<"sending strings size->"<<payload.size()<<std::endl;
+        std::cerr<<"remain_size_can_be_fill->"<<remain_size_can_be_fill<<std::endl;
+        std::cerr<<"abs sqn->"<<next_seqno_absolute()<<std::endl;
+        std::cerr<<"win->"<<win<<std::endl;
         // std::cerr<<remain_size_can_be_fill<<":size:"<<max_size<<std::endl;
         remain_size_can_be_fill -= payload.size();
         //  _window_size -=  payload.size();

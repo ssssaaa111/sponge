@@ -31,6 +31,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     //  DUMMY_CODE(seg);
     if (state() != TCPState::State::TIME_WAIT)
     {
+        // std::cerr<<"not time_wait:"<<get_status(state())<< std::endl;
        _sender.set_time_has_waited(0);
     }
     
@@ -431,7 +432,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
      if (state() == TCPState::State::TIME_WAIT && ms_since_last_tick > 0)
         {
             // std::cerr<<get_status(state()) <<" end-----"<<std::endl;
-            std::cerr<<get_status(state())<<":time passed:"<<ms_since_last_tick<<":has_waited:"<<_sender.time_has_waited() << ":init wait:" << _sender.init_transmissions()<<" sqn:"<< _sender.next_seqno() << std::endl;
+            // std::cerr<<get_status(state())<<":time passed:"<<ms_since_last_tick<<":has_waited:"<<_sender.time_has_waited() << ":init wait:" << _sender.init_transmissions()<<" sqn:"<< _sender.next_seqno() << std::endl;
             
         }
     // std::cerr<<"tick:"<<get_status(state())<< std::endl;
@@ -500,26 +501,40 @@ void TCPConnection::end_input_stream() {
     string init_state =  get_status(state());
     if (state() == TCPState::State::ESTABLISHED)
     {
+         seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        seg.header().fin = true;
+        seg.header().seqno = _sender.next_seqno();
+        // _sender.next_seqno
+        _sender.send_empty_segment();
+        // _sender.segments_on_going().push(seg);
+        _sender.set_bytes_in_flight(1);
+        _segments_out.push(seg);
+        _sender.set_time_has_waited(0);
        std::cerr<<"active end, send a fin to server, sqn:"<<_sender.next_seqno()<< std::endl;
     }
 
     else if (state() == TCPState::State::CLOSE_WAIT)
     {
+        seg.header().ack = true;
+        seg.header().ackno = _receiver.ackno().value();
+        seg.header().fin = true;
+        seg.header().seqno = _sender.next_seqno();
+        // _sender.next_seqno
+        _sender.send_empty_segment();
+        // _sender.segments_on_going().push(seg);
+        _sender.set_bytes_in_flight(1);
+        _segments_out.push(seg);
+        _sender.set_time_has_waited(0);
        std::cerr<<"passive end, send a fin to server, sqn:"<<_sender.next_seqno()<< std::endl;
     } else {
         std::cerr<<"error, should not in: "<<get_status(state())<< std::endl;
         return;
     }
-    seg.header().ack = true;
-    seg.header().ackno = _receiver.ackno().value();
-    seg.header().fin = true;
-    seg.header().seqno = _sender.next_seqno();
-    // _sender.next_seqno
-    _sender.send_empty_segment();
-    // _sender.segments_on_going().push(seg);
-    _sender.set_bytes_in_flight(1);
-    _segments_out.push(seg);
-    _sender.set_time_has_waited(0);
+   
+    std::cerr<<"is sync recieve:"<<(_sender.next_seqno_absolute() < (_sender.stream_in().bytes_written()+2))<< std::endl;
+    std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_written()<< std::endl;
+    std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_read()<< std::endl;
     std::cerr<<init_state <<" change to: "<<get_status(state())<< std::endl;
 
     return;
