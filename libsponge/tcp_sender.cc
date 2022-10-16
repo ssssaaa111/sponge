@@ -76,7 +76,11 @@ void TCPSender::fill_window() {
         std::cerr<<"remain_size_can_be_fill->"<<remain_size_can_be_fill<<std::endl;
         std::cerr<<"abs sqn->"<<next_seqno_absolute()<<std::endl;
         std::cerr<<"win->"<<win<<std::endl;
+<<<<<<< HEAD
         // std::cerr<<remain_size_can_be_fill<<":size:"<<max_size<<std::endl;
+=======
+        std::cerr<<"send stream eof:"<<_stream.eof()<<std::endl;
+>>>>>>> add some printout
         remain_size_can_be_fill -= payload.size();
         //  _window_size -=  payload.size();
         _fin = _stream.eof();

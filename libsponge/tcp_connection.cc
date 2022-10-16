@@ -336,7 +336,7 @@ bool TCPConnection::active() const {
 }
 
 void TCPConnection::push_seg_out() {
-    // std::cerr<<"push seg out sender status is: "<<get_status(state()) << std::endl;
+    std::cerr<<"push seg out sender status is: "<<get_status(state()) << std::endl;
     if (TCPSenderStateSummary::FIN_SENT == TCPState::state_summary(_sender))
     {
         TCPSegment seg;
@@ -379,11 +379,16 @@ void TCPConnection::push_seg_out() {
 
 size_t TCPConnection::write(const string &data) {
     // DUMMY_CODE(data);
+    if (TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_SENT)
+    {
+        std::cerr<<get_status(state()) <<" can't write any data anymore........" <<std::endl;
+        return 0;
+    }
     
     size_t size = _sender.stream_in().write(data);
+    std::cerr<< "write into len:" << size<<" status is: "<<get_status(state()) << std::endl;
     // _sender.fill_window();
     push_seg_out();
-    // std::cerr<< "write into len:" << size<< std::endl;
     return size;
 
     
@@ -516,6 +521,10 @@ void TCPConnection::end_input_stream() {
 
     else if (state() == TCPState::State::CLOSE_WAIT)
     {
+<<<<<<< HEAD
+=======
+        // _sender.fill_window();
+>>>>>>> add some printout
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
         seg.header().fin = true;
