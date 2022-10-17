@@ -75,8 +75,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
             if (seg.header().win > 0)
             {
-                            // std::cerr<<"1111111166666666666666666666666:-----"<< _sender.next_seqno().raw_value() <<std::endl;
-
+                if (seg.header().win <= 1)
+                {
+                    // std::cerr<<"win_size1->"<< seg.header().win <<std::endl;
+                }
+                
                 _sender.ack_received(seg.header().ackno, seg.header().win);
             }
             if (seg.header().ackno == _sender.next_seqno())
@@ -150,6 +153,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             else if(seg.payload().size() == 0){
                 // TDDO::this is going to change......
                 _receiver.segment_received(seg);
+                //  std::cerr<<"win_size2->"<< seg.header().win <<std::endl;
                 _sender.ack_received(seg.header().ackno, seg.header().win);
                 push_seg_out();
         //  std::cerr<<"10after seg_recieved:"<<get_status(state())<< std::endl;
@@ -165,6 +169,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 seg1.header().ackno = _receiver.ackno().value();
                 // std::cerr<< "established after ack_no is->"<<_receiver.unwrap_sqn(_receiver.ackno().value()) << std::endl;
                 _segments_out.push(seg1); 
+                //  std::cerr<<"win_size3->"<< seg1.header().win <<std::endl;
         //  std::cerr<<"9after seg_recieved:"<<get_status(state())<< std::endl;
                 return;
             }
@@ -284,6 +289,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         
         // std::cerr<<"......666666666666666666666666666666666666666"<<std::endl;
         _sender.ack_received(seg.header().ackno, seg.header().win);
+        //  std::cerr<<get_status(state())<<" win_size4->"<< seg.header().win <<std::endl;
         seg.header().ackno;
         _receiver.segment_received(seg);
         push_seg_out();
@@ -336,12 +342,13 @@ bool TCPConnection::active() const {
 }
 
 void TCPConnection::push_seg_out() {
-    std::cerr<<"push seg out sender status is: "<<get_status(state()) << std::endl;
+    // std::cerr<<"push seg out sender status is: "<<get_status(state()) << std::endl;
     if (TCPSenderStateSummary::FIN_SENT == TCPState::state_summary(_sender))
     {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
+        seg.header().win = _receiver.window_size();
         _segments_out.push(seg);
         return;
     }
@@ -349,6 +356,7 @@ void TCPConnection::push_seg_out() {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
+        seg.header().win = _receiver.window_size();
         _segments_out.push(seg);
         return;
     }    
@@ -356,6 +364,7 @@ void TCPConnection::push_seg_out() {
         TCPSegment seg;
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
+        seg.header().win = _receiver.window_size();
         _segments_out.push(seg);
         return;
     } else {
@@ -368,7 +377,7 @@ void TCPConnection::push_seg_out() {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
-            //std::cerr<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
+            // std::cerr<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
             seg.header().win = _receiver.window_size();
         }
         _segments_out.push(seg);
@@ -381,12 +390,12 @@ size_t TCPConnection::write(const string &data) {
     // DUMMY_CODE(data);
     if (TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_SENT)
     {
-        std::cerr<<get_status(state()) <<" can't write any data anymore........" <<std::endl;
+        // std::cerr<<get_status(state()) <<" can't write any data anymore........" <<std::endl;
         return 0;
     }
     
     size_t size = _sender.stream_in().write(data);
-    std::cerr<< "write into len:" << size<<" status is: "<<get_status(state()) << std::endl;
+    // std::cerr<< "write into len:" << size<<" status is: "<<get_status(state()) << std::endl;
     // _sender.fill_window();
     push_seg_out();
     return size;
@@ -425,6 +434,9 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
             seg.header().win = _receiver.window_size();
+            if (_receiver.window_size() <= 1) {
+            //    std::cerr<<"win_size5"<< "-> "<<  _receiver.window_size() <<std::endl;
+            }
         }
         _segments_out.push(seg);
 
@@ -521,10 +533,7 @@ void TCPConnection::end_input_stream() {
 
     else if (state() == TCPState::State::CLOSE_WAIT)
     {
-<<<<<<< HEAD
-=======
         // _sender.fill_window();
->>>>>>> add some printout
         seg.header().ack = true;
         seg.header().ackno = _receiver.ackno().value();
         seg.header().fin = true;
@@ -541,10 +550,10 @@ void TCPConnection::end_input_stream() {
         return;
     }
    
-    std::cerr<<"is sync recieve:"<<(_sender.next_seqno_absolute() < (_sender.stream_in().bytes_written()+2))<< std::endl;
-    std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_written()<< std::endl;
-    std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_read()<< std::endl;
-    std::cerr<<init_state <<" change to: "<<get_status(state())<< std::endl;
+    // std::cerr<<"is sync recieve:"<<(_sender.next_seqno_absolute() < (_sender.stream_in().bytes_written()+2))<< std::endl;
+    // std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_written()<< std::endl;
+    // std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_read()<< std::endl;
+    // std::cerr<<init_state <<" change to: "<<get_status(state())<< std::endl;
 
     return;
 
