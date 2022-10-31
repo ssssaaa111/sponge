@@ -28,7 +28,7 @@ size_t ByteStream::write(const string &data) {
     s.assign(data.begin(), data.begin()+len);
     _buffer.append(Buffer(move(s)));
     // std::cerr<<"after write buffer len:"<<_buffer.size()<<std::endl;
-    std::cerr<<"write len:"<<len<<std::endl;
+    // std::cerr<<"write len:"<<len<<std::endl;
     return len;
 }
 

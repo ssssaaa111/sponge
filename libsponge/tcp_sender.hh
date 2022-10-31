@@ -74,6 +74,14 @@ class TCPSender {
     //! \brief Generate an empty-payload segment (useful for creating empty ACK segments)
     void send_empty_segment();
 
+    void send_empty_segment1() {
+       // empty segment doesn't need store to outstanding queue
+      TCPSegment seg;
+      seg.header().seqno = wrap(_next_seqno, _isn);
+      seg.header().ack = true;
+      _segments_out.push(seg);
+    };
+
     //! \brief create and send segments to fill as much of the window as possible
     void fill_window();
 

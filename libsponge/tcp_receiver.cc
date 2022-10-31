@@ -13,6 +13,7 @@ using namespace std;
 
 void TCPReceiver::segment_received(const TCPSegment &seg) {
     // DUMMY_CODE(seg);
+    // size_t before_size = window_size();
     _len = seg.length_in_sequence_space();
     if (_is_started) {
         if (seg.header().syn) {
@@ -57,6 +58,12 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         }
         
     }
+    if (window_size() == 0)
+    {
+    //    std::cerr<<"before size:"<<before_size<< " _receiver size=======:"<<  window_size()<<std::endl;
+    }
+    
+     
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const {

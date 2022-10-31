@@ -72,12 +72,15 @@ void TCPSender::fill_window() {
 
         seg.header().seqno = wrap(_next_seqno, _isn); 
         string payload = _stream.read(min(remain_size_can_be_fill, max_size));
+        std::cerr<<"sender start----------------------------------"<<std::endl;
         std::cerr<<"sending strings size->"<<payload.size()<<std::endl;
         std::cerr<<"remain_size_can_be_fill->"<<remain_size_can_be_fill<<std::endl;
         std::cerr<<"abs sqn->"<<next_seqno_absolute()<<std::endl;
+        std::cerr<<"sqn->"<<seg.header().seqno<<std::endl;
         std::cerr<<"win->"<<win<<std::endl;
-        // std::cerr<<remain_size_can_be_fill<<":size:"<<max_size<<std::endl;
+        std::cerr<<remain_size_can_be_fill<<":size:"<<max_size<<std::endl;
         std::cerr<<"send stream eof:"<<_stream.eof()<<std::endl;
+        std::cerr<<"sender off============----------------------------------"<<std::endl;
         remain_size_can_be_fill -= payload.size();
         //  _window_size -=  payload.size();
         _fin = _stream.eof();
@@ -86,10 +89,12 @@ void TCPSender::fill_window() {
             if (remain_size_can_be_fill > 0)
             {
                  seg.header().fin = _fin;
+                 std::cerr<<"sender send fin to the peer....."<<std::endl;
                 // _window_size -= 1;
                 // remain_size_can_be_fill -= 1;
             } else {
                _fin = false; 
+               std::cerr<<"sender should but can't send fin to the peer, window is too small....."<<std::endl;
             }
         }
 
@@ -177,7 +182,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         _consecutive_retransmissions = 0;
         _last_received_ack = ack_unwrap;
     }
-    // fill_window();
+    fill_window();
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
@@ -194,9 +199,11 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     
     if (_timer)
     {
-        // std::cout<<"_time_has_waited1:" << _time_has_waited<< std::endl;
+        
         if (_retransmission_timeout_left <= ms_since_last_tick)
         {
+            std::cout<<"_time_has_waited1:" << _time_has_waited << " _retransmission_timeout_left:"<< _retransmission_timeout_left<< std::endl;
+            std::cout<<"_segments_on_going.front().ACK:"<< (_segments_on_going.front()).header().ackno<< std::endl;
             _segments_out.push(_segments_on_going.front());
             _consecutive_retransmissions += 1;
             if (_window_size != 0)
