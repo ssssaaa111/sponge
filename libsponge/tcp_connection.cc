@@ -162,7 +162,12 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 // std::cerr<< "seg win is->"<<seg.header().win << std::endl;
                 _receiver.segment_received(seg);
                 _sender.ack_received(seg.header().ackno, seg.header().win);
-                if (seg.payload().size() > 0 && _sender.segments_out().empty() && _receiver.ackno().has_value())
+                if (seg.header().fin)
+                {
+                    _linger_after_streams_finish = false;
+                }
+                
+                if ((seg.payload().size() > 0 ||seg.header().fin) && _sender.segments_out().empty() && _receiver.ackno().has_value())
                 {
                     
                     _sender.send_empty_segment1();
