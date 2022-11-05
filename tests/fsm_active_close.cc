@@ -71,7 +71,7 @@ int main() {
             test_3.send_fin(rx_seqno, WrappingInt32{2});
             const auto ack_expect = rx_seqno + 1;
             test_3.execute(Tick(1));
-            std::cout<<"expected ack:"<< ack_expect <<std::endl;
+            // std::cout<<"expected ack:"<< ack_expect <<std::endl;
             test_3.execute(ExpectOneSegment{}.with_ack(true).with_ackno(ack_expect),
                            "test 3 failed: wrong ACK for FIN");
 

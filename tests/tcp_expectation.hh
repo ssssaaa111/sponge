@@ -249,7 +249,7 @@ struct ExpectSegment : public TCPExpectation {
             throw SegmentExpectationViolation::violated_field("seqno", seqno.value(), seg.header().seqno);
         }
         if (ackno.has_value() and seg.header().ackno != ackno.value()) {
-            std::cout<<"wrong ackno" <<std::endl;
+            // std::cout<<"wrong ackno" <<std::endl;
             throw SegmentExpectationViolation::violated_field("ackno", ackno.value(), seg.header().ackno);
         }
         if (win.has_value() and seg.header().win != win.value()) {

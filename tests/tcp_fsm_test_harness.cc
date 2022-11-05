@@ -253,7 +253,7 @@ TCPTestHarness TCPTestHarness::in_last_ack(const TCPConfig &cfg,
                                            const WrappingInt32 tx_isn,
                                            const WrappingInt32 rx_isn) {
     TCPTestHarness h = in_close_wait(cfg, tx_isn, rx_isn);
-    std::cout<<"close" <<std::endl;
+    // std::cout<<"close" <<std::endl;
     h.execute(Close{});
     h.execute(
         ExpectOneSegment{}.with_no_flags().with_fin(true).with_ack(true).with_seqno(tx_isn + 1).with_ackno(rx_isn + 2));
@@ -303,11 +303,11 @@ TCPTestHarness TCPTestHarness::in_closing(const TCPConfig &cfg,
                                           const WrappingInt32 tx_isn,
                                           const WrappingInt32 rx_isn) {
     TCPTestHarness h = in_fin_wait_1(cfg, tx_isn, rx_isn);
-    std::cout<< "in_fin_wait_1 " << tx_isn << " " << rx_isn << std::endl;
+    // std::cout<< "in_fin_wait_1 " << tx_isn << " " << rx_isn << std::endl;
     h.send_fin(rx_isn + 1, tx_isn + 1);
-    std::cout<<"received fin" << std::endl;
+    // std::cout<<"received fin" << std::endl;
     h.execute(ExpectOneSegment{}.with_no_flags().with_ack(true).with_ackno(rx_isn + 2));
-    std::cout<<"after received fin" << std::endl;
+    // std::cout<<"after received fin" << std::endl;
     return h;
 }
 

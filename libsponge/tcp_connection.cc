@@ -573,7 +573,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     }
 
 void TCPConnection::end_input_stream() {
-    // std::cerr<<"before end_input_stream:"<<state().name()<< std::endl;
+    std::cerr<<"before end_input_stream:"<<get_status(state())<< std::endl;
     _sender.stream_in().end_input();
     TCPSegment seg;
     string init_state =  get_status(state());
@@ -617,7 +617,7 @@ void TCPConnection::end_input_stream() {
     std::cerr<<"is sync recieve:"<<(_sender.next_seqno_absolute() < (_sender.stream_in().bytes_written()+2)) << " finshed"<< std::endl;
     std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_written()<< std::endl;
     std::cerr<<"is sync recieve:"<<_sender.next_seqno_absolute() <<" : "<< _sender.stream_in().bytes_read()<< std::endl;
-    std::cerr<<init_state <<" change to: "<<get_status(state())<< std::endl;
+    std::cerr<<"after end of stream:" <<init_state <<" change to: "<<get_status(state())<< std::endl;
 
     return;
 
