@@ -38,12 +38,12 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     
      if (seg.header().rst)
      {
-        //  std::cerr<<"get a rst: close  connect" <<std::endl;
+         std::cerr<<"get a rst: close  connect" <<std::endl;
          _sender.stream_in().set_error();
          _receiver.stream_out().set_error();
          _active = 0;
          _linger_after_streams_finish = 0;
-        //  std::cerr<<"14after seg_recieved:"<<get_status(state())<< std::endl;
+         std::cerr<<"14after seg_recieved:"<<get_status(state())<< std::endl;
          return;
      }
      
@@ -99,7 +99,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         
         if (state() == TCPState::State::LISTEN)
         {
-            // std::cerr<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
+            std::cerr<<"in listen state: next abs sqo is ->"<<_sender.next_seqno_absolute()<<std::endl;
             // TCPSegment seg1;
             // seg1.header().ack = true;
             // _linger_after_streams_finish = false;
@@ -347,7 +347,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             _receiver.segment_received(seg);
         }
         
-        // std::cerr<<"......666666666666666666666666666666666666666"<<std::endl;
         _sender.ack_received(seg.header().ackno, seg.header().win);
         //  std::cerr<<get_status(state())<<" win_size4->"<< seg.header().win <<std::endl;
         seg.header().ackno;
@@ -356,30 +355,41 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
         std::cerr<<"bytes in the fly:"<<_sender.bytes_in_flight()<<std::endl;        
         std::cerr<<get_status(origin_state)<<" change(last) to: "<<get_status(state())<<std::endl;        
+        if (!get_status(state()).compare("error status"))
+        {
+            cout<<"error:"<< state().name()<< endl;
+            cout<<"linging:"<< _linger_after_streams_finish<< endl;
+            cout<<"active:"<< _active<< endl;
+        }
+        
     }
 
     if (state() == TCPState::State::LISTEN)
         {
             // std::cerr<<"listen"<<std::endl;
-            if (seg.header().syn)
-            {
-                TCPSegment seg1;
-                seg1.header().ack = true;
-                seg1.header().syn = true;
-                seg1.header().seqno = _sender.next_seqno();
-                seg1.header().ackno = seg.header().seqno + 1;
-                seg1.header().win = _cfg.recv_capacity;
-                _segments_out.push(seg1);
-                _sender.set_next_seqno_absolute(1);
-                _sender.set_bytes_in_flight(1);
-                _sender.set_next_seqno(1);
-                _receiver.segment_received(seg);
-                // _sender.ack_received(seg.header().ackno, seg.header().win);
-                // std::cerr<<"after seg out size:" << _segments_out.size() <<std::endl;
-        //  std::cerr<<"2after seg_recieved:"<<get_status(state())<< std::endl;
-                return;       
-            }
-            
+        //     if (seg.header().syn)
+        //     {
+        //         TCPSegment seg1;
+        //         seg1.header().ack = true;
+        //         seg1.header().syn = true;
+        //         seg1.header().seqno = _sender.next_seqno();
+        //         seg1.header().ackno = seg.header().seqno + 1;
+        //         seg1.header().win = _cfg.recv_capacity;
+        //         _segments_out.push(seg1);
+        //         _sender.set_next_seqno_absolute(1);
+        //         _sender.set_bytes_in_flight(1);
+        //         _sender.set_next_seqno(1);
+        //         _receiver.segment_received(seg);
+        //         // _sender.ack_received(seg.header().ackno, seg.header().win);
+        //         // std::cerr<<"after seg out size:" << _segments_out.size() <<std::endl;
+        // //  std::cerr<<"2after seg_recieved:"<<get_status(state())<< std::endl;
+        //         return;       
+        //     }
+            _receiver.segment_received(seg);
+            _sender.ack_received(seg.header().ackno, seg.header().win);
+            push_seg_out();
+            std::cerr<<"change LISTEN to "<<get_status(state())<< std::endl;
+            return;
         }
 
     if (state() == TCPState::State::SYN_SENT && seg.header().syn)
@@ -396,7 +406,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
     // std::cerr<<" after seg_recieved:"<<state().name()<< std::endl;
     push_seg_out();
-        //  std::cerr<<"1after seg_recieved:"<<get_status(state())<< std::endl;
+    std::cerr<<"1after seg_recieved:"<<get_status(state())<< std::endl;
  }
 
 bool TCPConnection::active() const { 
@@ -511,7 +521,9 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
                std::cerr<<"receiver win size is out"<< "-> "<<  _receiver.window_size() <<std::endl;
             }
         }
-        std::cerr<<get_status(state())<<" resend push seg ackno:"<< "-> "<< _receiver.ackno().value()  <<std::endl;
+        if (_receiver.ackno().has_value()) {
+            std::cerr<<get_status(state())<<" resend push seg ackno:"<< "-> "<< _receiver.ackno().value()  <<std::endl;
+        }
         std::cerr<<get_status(state())<<" resend push seg sqn:"<< "-> "<< seg.header().seqno  <<std::endl;
         _segments_out.push(seg);
 
@@ -663,11 +675,19 @@ bool TCPConnection::in_syn_recv() {
 TCPConnection::~TCPConnection() {
     try {
         if (active()) {
+            std::cerr<<"bad disconnection:" <<get_status(state())<<endl;
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
 
             // Your code here: need to send a RST segment to the peer
+            _receiver.stream_out().set_error();
+            _sender.stream_in().set_error();
+            _active = false;
+            TCPSegment seg;
+            seg.header().rst = true;
+            _segments_out.push(seg);
+
         }
     } catch (const exception &e) {
-        // std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
+        std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
     }
 }

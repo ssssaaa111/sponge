@@ -204,7 +204,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         
         if (_retransmission_timeout_left <= ms_since_last_tick)
         {
-            // std::cout<<"_time_has_waited1:" << _time_has_waited << " _retransmission_timeout_left:"<< _retransmission_timeout_left<< std::endl;
+            std::cerr<<"_time_has_waited1:" << _time_has_waited << " _retransmission_timeout_left:"<< _retransmission_timeout_left<< std::endl;
             // std::cout<<"_segments_on_going.front().ACK:"<< (_segments_on_going.front()).header().ackno<< std::endl;
             _segments_out.push(_segments_on_going.front());
             _consecutive_retransmissions += 1;
