@@ -292,6 +292,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         if (state() == TCPState::State::FIN_WAIT_2)
         {
             std::cerr<<"in State::FIN_WAIT_2 get seg size:"<<seg.payload().size()<<std::endl;
+            auto init_ackno = _receiver.ackno();
 
             // if (seg.header().fin)
             // {
@@ -306,10 +307,12 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             
             if((seg.payload().size() > 0 ||seg.header().fin) && _sender.segments_out().empty() && _receiver.ackno().has_value())
             {
-                std::cerr<<"FIN_WAIT_2 to send a empty seg"<< std::endl;
+                std::cerr<<"FIN_WAIT_2 to send a empty seg, is seg has fin:"<< seg.header().fin << std::endl;
                 _sender.send_empty_segment1();
             }
             push_seg_out();
+            std::cerr<<"in State::FIN_WAIT_2 get ack diff:"<<_receiver.ackno().value() - init_ackno.value()<<std::endl;
+            std::cerr<<"in State::FIN_WAIT_2 unassembled bytes: "<<_receiver.unassembled_bytes() << "<------"<<std::endl;
             std::cerr<<"from FIN_WAIT_2 change to "<<":"<<get_status(state())<<std::endl;
             // std::cerr<<"seg out size:" << _segments_out.size() <<std::endl;
             // std::cerr<<"seg ackno:" << seg1.header().ackno <<std::endl;
@@ -455,7 +458,7 @@ void TCPConnection::push_seg_out() {
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
-            std::cerr<< "push add _receiver ackno:"<<  _receiver.ackno().value()<<std::endl;
+            std::cerr<< "push add _receiver ackno:"<<  _receiver.unwrap_sqn(_receiver.ackno().value())<<std::endl;
             if (_receiver.window_size() == 0)
             {
               std::cerr<< "_receiver size:"<<  _receiver.window_size()<<std::endl;
@@ -522,9 +525,10 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
             }
         }
         if (_receiver.ackno().has_value()) {
-            std::cerr<<get_status(state())<<" resend push seg ackno:"<< "-> "<< _receiver.ackno().value()  <<std::endl;
+            std::cerr<<get_status(state())<<" resend push seg ackno:"<< "-> "<< _receiver.unwrap_sqn(_receiver.ackno().value())  <<std::endl;
         }
         std::cerr<<get_status(state())<<" resend push seg sqn:"<< "-> "<< seg.header().seqno  <<std::endl;
+        std::cerr<<get_status(state())<<" resend push seg is fin:"<< "-> "<<seg.header().fin <<std::endl;
         _segments_out.push(seg);
 
     }

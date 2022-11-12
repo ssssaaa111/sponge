@@ -45,6 +45,8 @@ long StreamReassembler::merge_block(block_node &elm1, const block_node &elm2) {
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
     // _output.end_input
     if (index >= _head_index + _capacity) {
+        cerr << "7777" << endl;
+
         return;
     }
     long merged_bytes = 0;
@@ -54,16 +56,22 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     // size_t to_be_delete_size = 0;
     // 重复字符串，可以直接忽略
     if (index + data.length() <= _head_index) {
+                cerr << "6666" << endl;
+                cerr << "_head_index:" << _head_index << endl;
+                cerr << "index + data.length():" << index + data.length() << endl;
+                cerr << "6666" << endl;
         // 收到eof表示已经收到结束字符，只需让剩下的unassemb
         if (eof) {
             _eof_flag = true;
         }
         if (_eof_flag && empty()) {
-            // std::cout<<"end of input 1" << std::endl;
+            // std::cerr<<"end of input 1" << std::endl;
             _output.end_input();
         }
         return;
     } else if (index <= _head_index) {  // 和起始点的重叠了，可以写入stream中，可以向后继续合并
+        cerr << "5555" << endl;
+
         size_t offset = _head_index - index;  // substring的新起点
         elm.data.assign(data.begin() + offset, data.end());
         elm.begin = _head_index;
@@ -74,7 +82,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             // merge next
             iter = _blocks.begin();
             while (iter != _blocks.end() && (merged_bytes = merge_block(elm, *iter)) >= 0) {
-                // cout << "2222" << endl;
+                // cerr << "2222" << endl;
                 _unassembled_byte -= merged_bytes;
                 to_be_delete.push_back(iter);
                 iter++;
@@ -96,11 +104,12 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             _eof_flag = true;
         }
         if (_eof_flag && empty()) {
-            //  std::cout<<"end of input 2" << std::endl;
+            //  std::cerr<<"end of input 2" << std::endl;
             _output.end_input();
         }
 
     } else {  // 在起始字符串的后面一截，两者没有交集，没法合入到stream中，可以和前后的合并
+        cerr << "8888" << endl;
         // 如果碰到eof，加上标记，
         if (eof) {
             _eof_flag = true;
@@ -111,7 +120,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             return;
         }
         
-        // cout << "3333" << endl;
+        cerr << "3333" << endl;
         elm.begin = index;
         elm.length = data.length();
         elm.data = data;
@@ -128,10 +137,10 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
                 iter++;
             }
 
-            // cout << "44444" << endl;
+            cerr << "44444" << endl;
             // merge back
             while (iter != _blocks.end() && (merged_bytes = merge_block(elm, *iter)) >= 0) {
-                // cout << "111" << endl;
+                cerr << "111" << endl;
                 _unassembled_byte -= merged_bytes;
                 to_be_delete.push_back(iter);
                 iter++;
