@@ -58,6 +58,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     if (index + data.length() <= _head_index) {
                 cerr << "6666" << endl;
                 cerr << "_head_index:" << _head_index << endl;
+                cerr << "data.length():" << data.length() << endl;
                 cerr << "index + data.length():" << index + data.length() << endl;
                 cerr << "6666" << endl;
         // 收到eof表示已经收到结束字符，只需让剩下的unassemb
@@ -97,8 +98,19 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 
         // 把新合并的节点刷进stream
         size_t write_bytes = _output.write(elm.data);
+        
+        
         _head_index += write_bytes;
         _unassembled_byte -= write_bytes;
+        if (write_bytes != elm.length)
+        {
+            cerr << "exceed the byte stream size: "<< write_bytes << " should write:" << elm.length << endl;
+            block_node elm1;
+            elm1.data.assign(elm.data.begin() + write_bytes, elm.data.end());
+            elm1.begin = _head_index;
+            elm1.length = elm.data.length() - write_bytes;
+            _blocks.insert(elm1);
+        }
         // 收到eof表示已经收到结束字符，只需让剩下的unassemb
         if (eof) {
             _eof_flag = true;

@@ -204,7 +204,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         {
             if (seg.header().ackno == _sender.next_seqno())
             {
-                // std::cerr<<"current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
+                std::cerr<<"before current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
                 _receiver.segment_received(seg);
                 _sender.ack_received(seg.header().ackno, seg.header().win);
                 // std::cerr<<"current byte in fly:"<<_<<std::endl;
@@ -212,7 +212,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 // {
                 //     _sender.
                 // }
-                
+                std::cerr<<"after current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
+
                 // _sender.set_bytes_in_flight(0);
                 _active = 0;
                 std::cerr<<"current last ack, change to" << get_status(state())<<std::endl;
