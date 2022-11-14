@@ -50,13 +50,20 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
      // resend fin
      if ((state() == TCPState::State::TIME_WAIT || state() == TCPState::State::CLOSING)  && seg.header().fin)
     {
-        TCPSegment seg1;
-        seg1.header().ack = true;
-        _sender.set_time_has_waited(0);
-        seg1.header().ackno = seg.header().seqno + 1;
-        _segments_out.push(seg1);
+        // TCPSegment seg1;
+        // seg1.header().ack = true;
+        // _sender.set_time_has_waited(0);
+        // seg1.header().ackno = seg.header().seqno + 1;
+        // _segments_out.push(seg1);
         _receiver.segment_received(seg);
-        //  std::cerr<<"send ack to client:"<<get_status(state())<<"  ackno:"<< seg.header().seqno + 1 << std::endl;
+         if(_sender.segments_out().empty() && _receiver.ackno().has_value() && (seg.payload().size() > 0 ||seg.header().fin))
+        {
+                std::cerr<<"CLOSE_WAIT to send a empty seg"<< std::endl;
+                _sender.set_time_has_waited(0);
+                _sender.send_empty_segment1();
+        }
+        push_seg_out();
+         std::cerr<<"send ack to client:"<<get_status(state())<<"  ackno:"<< seg.header().seqno + 1 << std::endl;
         return;
     }
     
@@ -137,17 +144,15 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
         if (state() == TCPState::State::TIME_WAIT)
         {
-            if (seg.header().fin)
+            _sender.set_time_has_waited(0);
+            _receiver.segment_received(seg);
+            _sender.ack_received(seg.header().ackno, seg.header().win);
+            if(_sender.segments_out().empty() && _receiver.ackno().has_value() && (seg.payload().size() > 0 ||seg.header().fin))
             {
-                TCPSegment seg1;
-                seg1.header().ack = true;
-                _sender.set_time_has_waited(0);
-                seg1.header().ackno = seg.header().seqno + 1;
-                _segments_out.push(seg1);
-                _receiver.segment_received(seg);
-                std::cerr<<"from: TIME_WAIT change to"<<get_status(state())<< std::endl;
-                return;
+                    std::cerr<<"TIME_WAIT to send a empty seg"<< std::endl;
+                    _sender.send_empty_segment1();
             }
+            push_seg_out();
         }
 
         if (state() == TCPState::State::ESTABLISHED)
@@ -202,7 +207,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
         if (state() == TCPState::State::LAST_ACK)
         {
-            if (seg.header().ackno == _sender.next_seqno())
+            if ((seg.header().ackno - _sender.next_seqno()) >= 0)
             {
                 std::cerr<<"before current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
                 _receiver.segment_received(seg);
@@ -215,7 +220,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 std::cerr<<"after current byte in fly:"<<_sender.bytes_in_flight()<<std::endl;
 
                 // _sender.set_bytes_in_flight(0);
-                _active = 0;
+                if (_sender.bytes_in_flight() == 0)
+                {
+                    _active = 0;
+                }
+                
                 std::cerr<<"current last ack, change to" << get_status(state())<<std::endl;
             } else {
                 std::cerr<<"current last ack, but bad ackno:"<<seg.header().ackno <<" but need "<<_sender.next_seqno()<<std::endl;
@@ -359,11 +368,12 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
         std::cerr<<"bytes in the fly:"<<_sender.bytes_in_flight()<<std::endl;        
         std::cerr<<get_status(origin_state)<<" change(last) to: "<<get_status(state())<<std::endl;        
+        // cout<<"state:"<< state().name()<< endl;
         if (!get_status(state()).compare("error status"))
         {
-            cout<<"error:"<< state().name()<< endl;
-            cout<<"linging:"<< _linger_after_streams_finish<< endl;
-            cout<<"active:"<< _active<< endl;
+            cerr<<"error:"<< state().name()<< endl;
+            cerr<<"linging:"<< _linger_after_streams_finish<< endl;
+            cerr<<"active:"<< _active<< endl;
         }
         
     }
