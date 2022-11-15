@@ -42,7 +42,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         }
         // std::cout<<"recieve string->"<< seg.payload().copy() <<std::endl;
         _reassembler.push_substring(seg.payload().copy(), stream_index, seg.header().fin);
-        // std::cerr<<"_reassembler.unassembled_bytes()->"<< _reassembler.unassembled_bytes() << "<----"<<std::endl;
+        std::cerr<<"_reassembler.unassembled_bytes()->"<< _reassembler.unassembled_bytes() << "<----"<<std::endl;
         // head index 属于 stream index，不包括syn，所以这里-1和+1抵消
         _last_checkpoint = _checkpoint;
         _checkpoint = _reassembler.head_index();

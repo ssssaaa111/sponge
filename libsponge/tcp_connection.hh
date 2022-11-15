@@ -5,6 +5,8 @@
 #include "tcp_receiver.hh"
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
+#include <cassert>
+#include<iostream>
 
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
@@ -100,8 +102,11 @@ class TCPConnection {
       {
         return STATE[11];
       }
-
-    return "error status";
+      std::cerr<<"error:"<< state().name()<< std::endl;
+      std::cerr<<"linging:"<< _linger_after_streams_finish<< std::endl;
+      std::cerr<<"active:"<< _active<< std::endl;
+      assert(0);
+      return "error status";
     }
 
     //! \brief Write data to the outbound byte stream, and send it over TCP if possible

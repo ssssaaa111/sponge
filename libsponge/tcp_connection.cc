@@ -67,6 +67,26 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         return;
     }
     
+    if (state() == TCPState::State::SYN_SENT)
+        {
+            std::cerr<<" from SYN_SENT"<<std::endl;
+            // TCPSegment seg1;
+            // seg1.header().ack = true;
+            // seg1.header().ackno = seg.header().seqno + 1;
+            // seg1.header().win = _cfg.recv_capacity;
+            // _segments_out.push(seg1);
+            _receiver.segment_received(seg);
+            _sender.ack_received(seg.header().ackno, seg.header().win);
+            if (seg.header().syn)
+            {
+                std::cerr<<" get syn "<<std::endl;
+                _sender.send_empty_segment1();
+            }
+            push_seg_out();
+            
+            std::cerr<<" SYN_SENT change to: "<<get_status(state())<<std::endl;
+        }
+
     if (seg.header().ack)
     { 
         // std::cerr<<"get ack with akcno :"<<seg.header().ackno<< std::endl;
@@ -182,7 +202,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
                 // std::cerr<< "seg win is->"<<seg.header().win << std::endl;
             _receiver.segment_received(seg);
             _sender.ack_received(seg.header().ackno, seg.header().win);
-            if (seg.header().fin)
+            if (_receiver.stream_out().input_ended())
             {
                 _linger_after_streams_finish = false;
             }
@@ -350,15 +370,8 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             return;
         }
         
-         if (state() == TCPState::State::SYN_SENT && seg.header().syn)
-        {
-            TCPSegment seg1;
-            seg1.header().ack = true;
-            seg1.header().ackno = seg.header().seqno + 1;
-            seg1.header().win = _cfg.recv_capacity;
-            _segments_out.push(seg1);
-            _receiver.segment_received(seg);
-        }
+        //  if (state() == TCPState::State::SYN_SENT && seg.header().syn)
+         
         
         _sender.ack_received(seg.header().ackno, seg.header().win);
         //  std::cerr<<get_status(state())<<" win_size4->"<< seg.header().win <<std::endl;
@@ -369,12 +382,10 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         std::cerr<<"bytes in the fly:"<<_sender.bytes_in_flight()<<std::endl;        
         std::cerr<<get_status(origin_state)<<" change(last) to: "<<get_status(state())<<std::endl;        
         // cout<<"state:"<< state().name()<< endl;
-        if (!get_status(state()).compare("error status"))
-        {
-            cerr<<"error:"<< state().name()<< endl;
-            cerr<<"linging:"<< _linger_after_streams_finish<< endl;
-            cerr<<"active:"<< _active<< endl;
-        }
+        // if (!get_status(state()).compare("error status"))
+        // {
+          
+        // }
         
     }
 
@@ -406,14 +417,14 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
             return;
         }
 
-    if (state() == TCPState::State::SYN_SENT && seg.header().syn)
-    {
-        // TCPSegment seg1;
-        // seg1.header().ack = true;
-        // seg1.header().ackno = seg.header().seqno + 1;
-        // _segments_out.push(seg1);
-        _receiver.segment_received(seg);
-    }
+    // if (state() == TCPState::State::SYN_SENT && seg.header().syn)
+    // {
+    //     // TCPSegment seg1;
+    //     // seg1.header().ack = true;
+    //     // seg1.header().ackno = seg.header().seqno + 1;
+    //     // _segments_out.push(seg1);
+    //     _receiver.segment_received(seg);
+    // }
     
 
      
@@ -446,21 +457,21 @@ void TCPConnection::push_seg_out() {
     //     _segments_out.push(seg);
     //     return;
     // }    
-     if(state() == TCPState::State::SYN_RCVD) {
-        TCPSegment seg;
-        seg.header().ack = true;
-        seg.header().ackno = _receiver.ackno().value();
-        seg.header().win = _receiver.window_size();
-        _segments_out.push(seg);
-        return;
-    } else {
+    //  if(state() == TCPState::State::SYN_RCVD) {
+    //     TCPSegment seg;
+    //     seg.header().ack = true;
+    //     seg.header().ackno = _receiver.ackno().value();
+    //     seg.header().win = _receiver.window_size();
+    //     _segments_out.push(seg);
+    //     return;
+    // } else {
         _sender.fill_window();
         // if (_sender.segments_out().size() == 0 && state() == TCPState::State::ESTABLISHED)
         // {
         //      _sender.send_empty_segment1();
         // }
         
-    }
+    // }
     std::cerr<< "sender.segments_out().size():"<< _sender.segments_out().size()<<std::endl;
     while (_sender.segments_out().size() != 0)
     {
